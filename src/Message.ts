@@ -1,0 +1,69 @@
+import * as borsh from 'borsh';
+
+/**
+ * Message objects are used for sending and receiving Instruction data via their
+ * `fromBuffer` and `toBuffer` methods.
+ */
+export default class Message {
+  [key: string]: any;
+
+  /**
+   * Return a new Message isntance.
+   *
+   * @param {any} fields - an object whose properties we assign to this Message.
+   */
+  constructor(fields: any | null = null) {
+    if (fields) {
+      Object.keys(fields).map((k: string) => {
+        this[k] = fields[k];
+      });
+    }
+  }
+
+  /**
+   * @return {number} - The integer offset of this class in its corresponding
+   * Rust enum. If this class corresponds to the second enum variant, for
+   * example, then we'd expect index == 1.
+   */
+  get variant(): number {
+    return Reflect.getMetadata('variant', this.constructor);
+  }
+
+  /**
+   * @return {any} - The borsh schema object built up via `variant` and `field`
+   * decorators.
+   */
+  get schema(): any {
+    return Reflect.getMetadata('schema', this.constructor);
+  }
+
+  /**
+   * Borsh serialize this message to a buffer. To serialize the object to
+   * something we receive as an enum variant in Rust, we set the first byte of
+   * the buffer to the index of the variant in the enum.
+   *
+   * @return {Buffer} - The serialized message as a buffer.
+   */
+  toBuffer(): Buffer {
+    const cls: any = this.constructor;
+    const schema = new Map([[cls, this.schema]]);
+    const bytes = borsh.serialize(schema, this);
+    return Buffer.from(Uint8Array.of(this.variant, ...bytes));
+  }
+
+  /**
+   * Borsh deserialize a buffer, setting its properties on this message.
+   *
+   * @param {Buffer} data - The buffer to deserialize into this message.
+   */
+  fromBuffer(data: Buffer): void {
+    const Cls: any = this.constructor;
+    const schema = new Map([[Cls, this.schema]]);
+    const raw = new Cls(borsh.deserialize(schema, Cls, data));
+    if (raw) {
+      Object.keys(raw).map((k: string) => {
+        this[k] = raw[k];
+      });
+    }
+  }
+}
