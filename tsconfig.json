@@ -7,10 +7,14 @@
   },
   "compilerOptions": {
     "declaration": true,
-    "moduleResolution": "node",
-    "module": "es2015",
     "experimentalDecorators": true,
+    "sourceMap": true,
+    "strictNullChecks": true,
+    "moduleResolution": "node",
+    "module": "commonjs",
+    "target": "es2015",
+    "outDir": "./dist"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist"]
 }

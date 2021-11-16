@@ -55,7 +55,7 @@ export async function ensureSolanaProgramIsDeployed(
       throw new Error('Program needs to be built and deployed');
     }
   } else if (!programInfo.executable) {
-    throw new Error(`Program is not executable`);
+    throw new Error('Program is not executable');
   }
   console.log(`Using program ${programId.toBase58()}`);
   return programId;

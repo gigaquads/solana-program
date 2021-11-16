@@ -24,13 +24,17 @@ import {
  */
 export default class Program {
   readonly programKeypairPath: string;
+
   readonly programSoPath: string;
 
   payer?: Keypair;
 
   _isConnected: boolean;
+
   _config?: any;
+
   _conn?: Connection;
+
   _programId?: PublicKey;
 
   /**
@@ -113,7 +117,7 @@ export default class Program {
     // init new transaction containing instruction and send
     const instruction = new TransactionInstruction({
       programId: this._programId!,
-      keys: keys,
+      keys,
       data: data !== null ? data.toBuffer() : Buffer.alloc(0),
     });
 
@@ -199,8 +203,8 @@ export default class Program {
           basePubkey: payer.publicKey,
           newAccountPubkey: pubKey,
           programId: this.programId!,
-          seed: seed,
-          space: space,
+          seed,
+          space,
         }),
       );
       await sendAndConfirmTransaction(conn, transaction, [payer]);

@@ -1,10 +1,15 @@
 {
-  "name": "solana-client",
+  "name": "solana-program",
   "version": "0.1.0",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["./dist"],
   "author": "Daniel Gabriele",
+  "description": "Higher-level client interface for interacting with on-chain Solana programs",
   "license": "MIT",
   "scripts": {
+    "build": "tsc",
+    "prepare": "yarn run build",
     "start:example:luckyNumber": "ts-node src/examples/luckyNumber.ts",
     "start-with-test-validator": "start-server-and-test 'solana-test-validator --reset --quiet' http://localhost:8899/health start",
     "lint": "eslint --ext .ts src/* && prettier --check \"src/**/*.ts\"",

@@ -3,9 +3,8 @@ import Message from '../Message';
 import {variant, field} from '../decorators';
 import Program from '../Program';
 
-const PROJECT_PATH = (
-  process.env.PROJECT_PATH || process.env.HOME + '/projects/rust/solana/base/'
-);
+const PROJECT_PATH =
+  process.env.PROJECT_PATH || `${process.env.HOME}/projects/rust/solana/base/`;
 
 /**
  * Data structure received by Rust program containing a "lucky number". This
@@ -14,7 +13,7 @@ const PROJECT_PATH = (
 @variant(0)
 class LuckyNumber extends Message {
   @field('u8')
-  value?: number;
+    value?: number;
 }
 
 /**
@@ -23,8 +22,8 @@ class LuckyNumber extends Message {
 async function main() {
   // initialize client interface to deployed on-chain Solana program.
   const program = await new Program(
-    PROJECT_PATH + '/dist/program/base-keypair.json',
-    PROJECT_PATH + '/dist/program/base.so',
+    `${PROJECT_PATH}/dist/program/base-keypair.json`,
+    `${PROJECT_PATH}/dist/program/base.so`,
   ).connect();
 
   // create account to store lucky number in. (background: accounts hold a SOL
@@ -60,7 +59,7 @@ async function main() {
 // program point of entry:
 main().then(
   () => process.exit(),
-  err => {
+  (err) => {
     console.error(err);
     process.exit(-1);
   },

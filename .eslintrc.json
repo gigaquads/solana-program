@@ -4,6 +4,7 @@
         "es2021": true
     },
     "extends": [
+        // "eslint:recommended",
         "google"
     ],
     "parser": "@typescript-eslint/parser",
@@ -15,5 +16,6 @@
         "@typescript-eslint"
     ],
     "rules": {
+      "indent": ["error", 2]
     }
 }

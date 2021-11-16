@@ -8,7 +8,9 @@ import Program from './Program';
  */
 export default class Account {
   readonly key: PublicKey;
+
   readonly info: AccountInfo<Buffer>;
+
   owner: Program;
 
   /**
