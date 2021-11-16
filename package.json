@@ -1,9 +1,11 @@
 {
   "name": "solana-program",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["./dist"],
+  "files": [
+    "./dist"
+  ],
   "author": "Daniel Gabriele",
   "description": "Higher-level client interface for interacting with on-chain Solana programs",
   "license": "MIT",
