@@ -2,6 +2,9 @@
 Solana Program is a high-level client for interacting with on-chain Solana
 programs from typescript.
 
+## Installing
+Just run `yarn add solana-program` (or `npm install...`).
+
 ## Basic Example
 Here's an example where we connect to an on-chain prorgam that simply stores a
 "lucky number" in an account. If the account doesn't already exist, we create
