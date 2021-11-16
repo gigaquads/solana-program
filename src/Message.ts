@@ -1,4 +1,5 @@
 import * as borsh from 'borsh';
+import {Account} from '.';
 
 /**
  * Message objects are used for sending and receiving Instruction data via their
@@ -10,13 +11,19 @@ export default class Message {
   /**
    * Return a new Message isntance.
    *
-   * @param {any} fields - an object whose properties we assign to this Message.
+   * @param {any | Account | null} source - Either an account whose data we
+   * intend to deserialize into this message's fields or an object containing
+   * its fields as properties.
    */
-  constructor(fields: any | null = null) {
-    if (fields) {
-      Object.keys(fields).map((k: string) => {
-        this[k] = fields[k];
-      });
+  constructor(source: any | Account | null = null) {
+    if (source) {
+      if (source instanceof Account) {
+        this.fromBuffer(source.info.data);
+      } else {
+        Object.keys(source).map((k: string) => {
+          this[k] = source[k];
+        });
+      }
     }
   }
 

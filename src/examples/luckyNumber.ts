@@ -13,7 +13,7 @@ const PROJECT_PATH =
 @variant(0)
 class LuckyNumber extends Message {
   @field('u8')
-    value?: number;
+  value?: number;
 }
 
 /**
@@ -47,10 +47,10 @@ async function main() {
     new LuckyNumber({value: Math.round(Math.random() * 100)}),
   );
 
-  // read updated lucky number from block chain.
+  // read updated lucky number from account stored on chain.
   {
     const account = await program.getAccount('lucky_number');
-    const luckyNumber = account.deserializeTo<LuckyNumber>(new LuckyNumber());
+    const luckyNumber = new LuckyNumber(account);
 
     console.log(`lucky number now set to ${luckyNumber.value}`);
   }
@@ -59,7 +59,7 @@ async function main() {
 // program point of entry:
 main().then(
   () => process.exit(),
-  (err) => {
+  err => {
     console.error(err);
     process.exit(-1);
   },
