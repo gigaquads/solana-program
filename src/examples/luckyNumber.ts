@@ -30,22 +30,14 @@ async function main() {
   // balance as well as optional storage space used by owner program.)
   const accountSize = 1; // in bytes
   const account = await program.getOrCreateAccount('lucky_number', accountSize);
+  const luckyNumber = new LuckyNumber({value: 69});
 
-  // prepare list of account keys needed to execute instruction. In this case,
-  // only the account that stores the lucky number.
-  const keys = [
-    {
-      pubkey: account.key,
-      isWritable: true,
-      isSigner: false,
-    },
-  ];
+  // create and execute transaction instruction
+  const tx = program
+    .newInstruction(luckyNumber)
+    .withAccount(account, {isSigner: false, isWritable: true});
 
-  // execute instruction on chain
-  await program.execute(
-    keys,
-    new LuckyNumber({value: Math.round(Math.random() * 100)}),
-  );
+  await tx.execute();
 
   // read updated lucky number from account stored on chain.
   {

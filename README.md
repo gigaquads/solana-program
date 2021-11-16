@@ -31,22 +31,17 @@ async function main() {
 
   // create program-owned account for "lucky number" storage
   const accountSize = 1; // size in bytes
-  const account = await program.getOrCreateAccount(
-    'lucky_number', accountSize
+  const account = await program.getOrCreateAccount('lucky_number', accountSize);
+  const luckyNumber = new LuckyNumber({value: 69});
+
+  // create and execute transaction instruction
+  const tx = (
+    program
+      .newInstruction(luckyNumber)
+      .withAccount(account, {isSigner: false, isWritable: true})
   );
 
-  // prepare instruction to execute...
-  // 1) arbitrary message/payload to send to on-chain app
-  // 2) metadata for accounts accessed by instruction
-  const luckyNumber = new LuckyNumber({value: 69});
-  const keys = [{
-    pubkey: account.key,
-    isWritable: true,
-    isSigner: false
-  }];
-
-  // execute instruction in on-chain transaction
-  await program.execute(keys, luckyNumber);
+  await tx.execute();
 
   // read updated lucky number from account stored on chain,
   // deserializing the account data buffer into a LuckyNumber.

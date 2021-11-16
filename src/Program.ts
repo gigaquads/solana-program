@@ -6,10 +6,10 @@ import {
   sendAndConfirmTransaction,
   SystemProgram,
   Transaction,
-  TransactionInstruction,
 } from '@solana/web3.js';
 
 import Account from './Account';
+import Instruction from './Instruction';
 import Message from './Message';
 import {
   airdropFundsForAccount,
@@ -99,30 +99,16 @@ export default class Program {
   }
 
   /**
-   * Send an instruction to the Solana program in a transaction.
+   * Initialize a new Instruction. To execute the instruction on-chain (in a
+   * transaction), use instr.execute().
    *
-   * @param {Array<any>} keys - Account keys required by instruction.
-   * @param {any} data - Instruction data.
+   * @param {Message?} data - Optional data to bind to instruction.
+   * @return {Instruction<T>} - An initialized Instruction.
    */
-  async execute(
-    keys: Array<any>,
-    data: Message | null = null,
-  ): Promise<string> {
-    if (!this._isConnected) {
-      throw Error(
-        'SolanaClient not connected. use `await client.connect()` ' +
-          'after constructing client.',
-      );
-    }
-    // init new transaction containing instruction and send
-    const instruction = new TransactionInstruction({
-      programId: this._programId!,
-      keys,
-      data: data !== null ? data.toBuffer() : Buffer.alloc(0),
-    });
-
-    const tx = new Transaction().add(instruction);
-    return await sendAndConfirmTransaction(this._conn!, tx, [this.payer!]);
+  newInstruction<T extends Message>(data: T | null = null): Instruction<T> {
+    const instruction = new Instruction<T>(this);
+    instruction.data = data;
+    return instruction;
   }
 
   /**
