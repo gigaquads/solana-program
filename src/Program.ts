@@ -11,12 +11,10 @@ import {
 import Account from './Account';
 import Instruction from './Instruction';
 import Message from './Message';
+import Solana from './Solana';
 import {
   airdropFundsForAccount,
   ensureSolanaProgramIsDeployed,
-  establishConnection,
-  getConfig,
-  getPayer,
 } from './util';
 
 /**
@@ -27,22 +25,13 @@ export default class Program {
 
   readonly programSoPath: string;
 
-  payer?: Keypair;
-
-  _isConnected: boolean;
+  _payer?: Keypair;
 
   _config?: any;
 
   _conn?: Connection;
 
-  _programId?: PublicKey;
-
-  /**
-   * Was client.connect awaited?
-   */
-  get isConnected(): boolean {
-    return this._isConnected;
-  }
+  _key?: PublicKey;
 
   /**
    * Loaded YAML config data.
@@ -59,10 +48,17 @@ export default class Program {
   }
 
   /**
+   * Payer keypair
+   */
+  get payer(): Keypair {
+    return this._payer!;
+  }
+
+  /**
    * Solana program ID or undefined if client not initialized.
    */
-  get programId(): PublicKey {
-    return this._programId!;
+  get key(): PublicKey {
+    return this._key!;
   }
 
   /**
@@ -73,28 +69,24 @@ export default class Program {
   constructor(programKeypairPath: string, programSoPath: string) {
     this.programSoPath = programSoPath;
     this.programKeypairPath = programKeypairPath;
-    this._isConnected = false;
     this._config = {};
   }
 
   /**
    * Initialize the web3 connection for communicating with the Solana program,
    * ensuring that the program is deployed and its account is executable.
+   * @param {Solana} solana - Solana application object.
+   * @return {Promise<Program>} - This program.
    */
-  async connect(): Promise<Program> {
-    if (this.isConnected) {
-      throw Error('SolanaClient already connected.');
-    }
-    this._config = await getConfig();
-    this._conn = await establishConnection(this._config);
-    this._programId = await ensureSolanaProgramIsDeployed(
+  async connect(solana: Solana): Promise<Program> {
+    this._config = solana.config;
+    this._conn = solana.conn;
+    this._payer = solana.payer;
+    this._key = await ensureSolanaProgramIsDeployed(
       this._conn,
       this.programSoPath,
       this.programKeypairPath,
     );
-    this.payer = await getPayer(this._config!);
-    this._isConnected = true;
-
     return this;
   }
 
@@ -121,7 +113,7 @@ export default class Program {
     return await PublicKey.createWithSeed(
       this.payer!.publicKey,
       seed,
-      this.programId!,
+      this.key,
     );
   }
 
@@ -188,7 +180,7 @@ export default class Program {
           fromPubkey: payer.publicKey,
           basePubkey: payer.publicKey,
           newAccountPubkey: pubKey,
-          programId: this.programId!,
+          programId: this.key,
           seed,
           space,
         }),

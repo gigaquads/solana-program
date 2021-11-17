@@ -37,7 +37,7 @@ implements InstructionInterface {
    * @return {PublicKey} - Public key address of owner program.
    */
   get programId(): PublicKey {
-    return this.program.programId;
+    return this.program.key;
   }
 
   /**
@@ -71,12 +71,6 @@ implements InstructionInterface {
   build(): TransactionInstruction {
     const prog = this.program;
 
-    if (!prog.isConnected) {
-      throw Error(
-        'program not connected. use `await program.connect()` ' +
-          'before trying to execute instructions.',
-      );
-    }
     // serialize Message to buffer as instruction data
     const data = this.data !== null ? this.data!.toBuffer() : Buffer.alloc(0);
 
@@ -91,7 +85,7 @@ implements InstructionInterface {
 
     // init new transaction containing instruction and send
     return new TransactionInstruction({
-      programId: prog.programId,
+      programId: prog.key,
       keys,
       data,
     });

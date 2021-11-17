@@ -23,8 +23,11 @@ class LuckyNumber extends Message {
 }
 
 async function main() {
-  // establish client connection with blockchain
-  const program = await new Program(
+  // establish connection with Solana cluster (i.e. devnet|testnet|mainnet)
+  const solana = await new Solana().connect();
+
+  // get client for deployed Solana program
+  const program = await solana.getProgram(
     './rust-program/dist/program/base-keypair.json',
     './rust-program/dist/program/base.so',
   ).connect();

@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import Message from '../Message';
 import {variant, field} from '../decorators';
-import Program from '../Program';
+import Solana from '../Solana';
 
 const PROJECT_PATH =
   process.env.PROJECT_PATH || `${process.env.HOME}/projects/rust/solana/base/`;
@@ -21,10 +21,11 @@ class LuckyNumber extends Message {
  */
 async function main() {
   // initialize client interface to deployed on-chain Solana program.
-  const program = await new Program(
+  const solana = await new Solana().connect();
+  const program = await solana.getProgram(
     `${PROJECT_PATH}/dist/program/base-keypair.json`,
     `${PROJECT_PATH}/dist/program/base.so`,
-  ).connect();
+  );
 
   // create account to store lucky number in. (background: accounts hold a SOL
   // balance as well as optional storage space used by owner program.)

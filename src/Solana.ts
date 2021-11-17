@@ -7,25 +7,62 @@ import {
   sendAndConfirmTransaction,
 } from '@solana/web3.js';
 
+import Program from './Program';
 import {
   establishConnection,
-  getConfig
+  getConfig,
+  getPayer,
 } from './util';
 
 /**
  * Solana global client application state.
  */
 export default class Solana {
-  private conn?: Connection | null = null;
-  private config?: any | null = null;
+  private _isConnected: boolean = false;
+  private _conn: Connection | null = null;
+  private _config: any | null = null;
+  private _payer: Keypair | null = null;
+  private _programs: any = {};
+
+  /**
+   * Was client.connect awaited?
+   */
+  get isConnected(): boolean {
+    return this._isConnected;
+  }
+
+  /**
+   * Loaded YAML config data.
+   */
+  get config(): any {
+    return this._config;
+  }
+
+  /**
+   * Payer keypair, as defined in Solana CLI config.
+   */
+  get payer(): Keypair {
+    return this._payer!;
+  }
+
+  /**
+   * JSON RPC Connection object or undefined if client not initialized.
+   */
+  get conn(): Connection {
+    return this._conn!;
+  }
 
   /**
    * Initialize web3 connection to solana blockchain.
    * @return {Solana} - This instance, now connected.
    */
   async connect(): Promise<Solana> {
-    this.config = await getConfig();
-    this.conn = await establishConnection(this.config);
+    if (!this._isConnected) {
+      this._config = await getConfig();
+      this._conn = await establishConnection(this._config!);
+      this._payer = await getPayer(this._config!);
+      this._isConnected = true;
+    }
     return this;
   }
 
@@ -62,4 +99,21 @@ export default class Solana {
     }
     return tx;
   }
+
+  /**
+   * Get (and memoize) a Program instance.
+   * @param {string} keypairPath - Filepath to program keypair.
+   * @param {string} soPath - Filepath to program .so file.
+   * @return {Program} - The loaded program.
+   */
+  async getProgram(keypairPath: string, soPath: string): Promise<Program> {
+    let program: Program = this._programs[soPath];
+    if (!program) {
+      program = new Program(keypairPath, soPath);
+      await program.connect(this);
+      this._programs[soPath] = program;
+    }
+    return program;
+  }
+
 }
