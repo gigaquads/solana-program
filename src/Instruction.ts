@@ -1,4 +1,5 @@
 import {
+  Keypair,
   PublicKey,
   sendAndConfirmTransaction,
   Transaction,
@@ -8,9 +9,19 @@ import {
 import {Account, Message, Program} from '.';
 
 /**
+ * Instruction Interface
+ */
+interface InstructionInterface {
+  readonly program: Program;
+  build(): TransactionInstruction;
+  execute(tx: Transaction | null): Promise<string>;
+}
+
+/**
  * A Solana program instruction.
  */
-export default class Instruction<T extends Message> {
+export default class Instruction<T extends Message>
+implements InstructionInterface {
   readonly program: Program;
   accounts: Array<AccountMetadata> = [];
   data?: T | null;
@@ -52,11 +63,12 @@ export default class Instruction<T extends Message> {
   }
 
   /**
-   * Execute the instruction in a transaction.
-   * @return {Promise<string>} Solana SDK Result string returned by executing a
-   * transaction.
+   * Generate a web3 TransactionInstruction using this solana-program
+   * Instruction. Multiple built instructions can be executed in a single
+   * transaction via `Instruction.executeMany(instructions)`.
+   * @return {TransactionInstruction} - The generated TransactionInstruction.
    */
-  async execute(): Promise<string> {
+  build(): TransactionInstruction {
     const prog = this.program;
 
     if (!prog.isConnected) {
@@ -78,14 +90,51 @@ export default class Instruction<T extends Message> {
     });
 
     // init new transaction containing instruction and send
-    const instruction = new TransactionInstruction({
+    return new TransactionInstruction({
       programId: prog.programId,
       keys,
       data,
     });
+  }
 
-    const tx = new Transaction().add(instruction);
+  /**
+   * Execute the instruction in a transaction.
+   * @param {Transaction | null} tx: An existing transaction to which we add the
+   * internally-generated instruction.
+   * @return {Promise<string>} Solana SDK Result string returned by executing a
+   * transaction.
+   */
+  async execute(tx: Transaction | null = null): Promise<string> {
+    const prog = this.program;
+    const txInstruction = this.build();
+
+    tx = tx !== null ? tx : new Transaction();
+    tx.add(txInstruction);
+
     return await sendAndConfirmTransaction(prog.conn, tx, [prog.payer!]);
+  }
+
+  /**
+   * Execute multiple instructions in a transaction.
+   * @param {Keypair} payer - Public key of sending account.
+   * @param {Array<Instruction>} instructions - Instructions to execute.
+   * @param {Transaction | null} tx - Pending transaction to use, if any.
+   * @return {Promise<string>} - String returned by web3 as a result of
+   * executing transaction.
+   */
+  static async executeMany(
+    payer: Keypair,
+    instructions: Array<InstructionInterface>,
+    tx: Transaction | null = null,
+  ) {
+    // create or reuse transaction
+    tx = tx !== null ? tx : new Transaction();
+    instructions.forEach((instr) => {
+      tx!.add(instr.build());
+    });
+    // perform transaction
+    const conn = instructions[0].program.conn;
+    return await sendAndConfirmTransaction(conn, tx, [payer!]);
   }
 }
 

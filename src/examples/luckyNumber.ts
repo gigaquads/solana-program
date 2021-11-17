@@ -13,7 +13,7 @@ const PROJECT_PATH =
 @variant(0)
 class LuckyNumber extends Message {
   @field('u8')
-  value?: number;
+    value?: number;
 }
 
 /**
@@ -51,7 +51,7 @@ async function main() {
 // program point of entry:
 main().then(
   () => process.exit(),
-  err => {
+  (err) => {
     console.error(err);
     process.exit(-1);
   },
