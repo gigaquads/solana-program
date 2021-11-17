@@ -18,6 +18,7 @@ import {
  * Solana global client application state.
  */
 export default class Solana {
+  private static _instance: Solana | undefined = undefined;
   private _isConnected: boolean = false;
   private _conn: Connection | null = null;
   private _config: any | null = null;
@@ -50,6 +51,17 @@ export default class Solana {
    */
   get conn(): Connection {
     return this._conn!;
+  }
+
+  /**
+   * Lazy create, memoize and return a global Solana singleton instance.
+   * @return {Solana} - global solana singleton.
+   */
+  static getInstance(): Solana {
+    if (this._instance === undefined) {
+      this._instance = new Solana();
+    }
+    return this._instance;
   }
 
   /**
@@ -115,5 +127,4 @@ export default class Solana {
     }
     return program;
   }
-
 }

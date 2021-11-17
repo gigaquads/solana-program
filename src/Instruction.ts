@@ -7,6 +7,7 @@ import {
 } from '@solana/web3.js';
 
 import {Account, Message, Program} from '.';
+import Solana from './Solana';
 
 /**
  * Instruction Interface
@@ -14,7 +15,7 @@ import {Account, Message, Program} from '.';
 interface InstructionInterface {
   readonly program: Program;
   build(): TransactionInstruction;
-  execute(tx: Transaction | null): Promise<string>;
+  execute(payer: Keypair, tx: Transaction | null): Promise<string>;
 }
 
 /**
@@ -93,17 +94,24 @@ implements InstructionInterface {
 
   /**
    * Execute the instruction in a transaction.
+   * @param {Keypair | null} payer - Public key of payer account; defaults to
+   * program.payer.
    * @param {Transaction | null} tx: An existing transaction to which we add the
    * internally-generated instruction.
    * @return {Promise<string>} Solana SDK Result string returned by executing a
    * transaction.
    */
-  async execute(tx: Transaction | null = null): Promise<string> {
+  async execute(
+    payer: Keypair | null = null,
+    tx: Transaction | null = null,
+  ): Promise<string> {
     const prog = this.program;
     const txInstruction = this.build();
 
     tx = tx !== null ? tx : new Transaction();
     tx.add(txInstruction);
+
+    payer = (payer !== null ? payer : prog.payer)!;
 
     return await sendAndConfirmTransaction(prog.conn, tx, [prog.payer!]);
   }
@@ -127,8 +135,8 @@ implements InstructionInterface {
       tx!.add(instr.build());
     });
     // perform transaction
-    const conn = instructions[0].program.conn;
-    return await sendAndConfirmTransaction(conn, tx, [payer!]);
+    const conn = Solana.getInstance().conn;
+    return await sendAndConfirmTransaction(conn, tx, [payer]);
   }
 }
 

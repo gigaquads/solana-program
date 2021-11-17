@@ -48,7 +48,7 @@ export default class Program {
   }
 
   /**
-   * Payer keypair
+   * Keypair of program creator, who paid for the program's account.
    */
   get payer(): Keypair {
     return this._payer!;
@@ -152,14 +152,20 @@ export default class Program {
    *
    * @param {string} seed - Seed used to generate account's address.
    * @param {number} space - Size of new account in bytes. (Max: 10MB)
+   * @param {Keypair} payer - Keypair of payer. Defaults to program.payer.
    * @return {Promise<Account>} - An Account object with fetched AccountInfo as
    * its `info` property.
    *
    */
-  async getOrCreateAccount(seed: string, space: number = 0): Promise<Account> {
+  async getOrCreateAccount(
+    seed: string,
+    space: number = 0,
+    payer: Keypair | null = null,
+  ): Promise<Account> {
     const conn = this.conn!;
-    const payer = this.payer!;
     const pubKey = await this.createProgramDerivedAddressWithSeed(seed);
+
+    payer = (payer !== null ? payer : this.payer)!;
 
     let accountInfo = await conn.getAccountInfo(pubKey);
 

@@ -21,7 +21,7 @@ class LuckyNumber extends Message {
  */
 async function main() {
   // initialize client interface to deployed on-chain Solana program.
-  const solana = await new Solana().connect();
+  const solana = await Solana.getInstance().connect();
   const program = await solana.getProgram(
     `${PROJECT_PATH}/dist/program/base-keypair.json`,
     `${PROJECT_PATH}/dist/program/base.so`,
