@@ -30,7 +30,7 @@ async function main() {
   const program = await solana.getProgram(
     './rust-program/dist/program/base-keypair.json',
     './rust-program/dist/program/base.so',
-  ).connect();
+  );
 
   // create program-owned account for "lucky number" storage
   const accountSize = 1; // size in bytes
