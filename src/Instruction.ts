@@ -135,8 +135,7 @@ implements InstructionInterface {
       tx!.add(instr.build());
     });
     // perform transaction
-    const conn = Solana.getInstance().conn;
-    return await sendAndConfirmTransaction(conn, tx, [payer]);
+    return await sendAndConfirmTransaction(Solana.conn, tx, [payer]);
   }
 }
 

@@ -1,8 +1,8 @@
 /node_modules
-*.sw[po]
 /.cargo
 /dist
+/test-ledger
+/yarn-error.log
 .env
-src/client/util/store
-test-ledger/
 .DS_Store
+*.sw[pon]

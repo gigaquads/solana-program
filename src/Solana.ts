@@ -18,57 +18,45 @@ import {
  * Solana global client application state.
  */
 export default class Solana {
-  private static _instance: Solana | undefined = undefined;
-  private _isConnected: boolean = false;
-  private _conn: Connection | null = null;
-  private _config: any | null = null;
-  private _payer: Keypair | null = null;
-  private _programs: any = {};
+  private static _isConnected: boolean = false;
+  private static _conn: Connection | null = null;
+  private static _config: any | null = null;
+  private static _payer: Keypair | null = null;
+  private static _programs: any = {};
 
   /**
    * Was client.connect awaited?
    */
-  get isConnected(): boolean {
+  static get isConnected(): boolean {
     return this._isConnected;
   }
 
   /**
    * Loaded YAML config data.
    */
-  get config(): any {
+  static get config(): any {
     return this._config;
   }
 
   /**
    * Payer keypair, as defined in Solana CLI config.
    */
-  get payer(): Keypair {
+  static get payer(): Keypair {
     return this._payer!;
   }
 
   /**
    * JSON RPC Connection object or undefined if client not initialized.
    */
-  get conn(): Connection {
+  static get conn(): Connection {
     return this._conn!;
-  }
-
-  /**
-   * Lazy create, memoize and return a global Solana singleton instance.
-   * @return {Solana} - global solana singleton.
-   */
-  static getInstance(): Solana {
-    if (this._instance === undefined) {
-      this._instance = new Solana();
-    }
-    return this._instance;
   }
 
   /**
    * Initialize web3 connection to solana blockchain.
    * @return {Solana} - This instance, now connected.
    */
-  async connect(): Promise<Solana> {
+  static async connect(): Promise<Solana> {
     if (!this._isConnected) {
       this._config = await getConfig();
       this._conn = await establishConnection(this._config!);
@@ -88,7 +76,7 @@ export default class Solana {
    * instruction. If left null, a new transaction is created.
    * @return {Transaction} - The Transaction used or created.
    */
-  async transfer(
+  static async transfer(
     payer: Keypair,
     receiver: PublicKey,
     lamports: number,
@@ -118,11 +106,14 @@ export default class Solana {
    * @param {string} soPath - Filepath to program .so file.
    * @return {Program} - The loaded program.
    */
-  async getProgram(keypairPath: string, soPath: string): Promise<Program> {
+  static async getProgram(
+    keypairPath: string,
+    soPath: string,
+  ): Promise<Program> {
     let program: Program = this._programs[soPath];
     if (!program) {
       program = new Program(keypairPath, soPath);
-      await program.connect(this);
+      await program.connect();
       this._programs[soPath] = program;
     }
     return program;

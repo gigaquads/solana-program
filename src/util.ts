@@ -13,7 +13,7 @@ export async function establishConnection(config: any): Promise<Connection> {
   const rpcUrl = await getRpcUrl(config);
   const connection = new Connection(rpcUrl, 'confirmed');
   const version = await connection.getVersion();
-  console.log('Connection to cluster established:', rpcUrl, version);
+  console.log('connection to cluster established:', {rpcUrl, version});
   return connection;
 }
 
@@ -28,37 +28,34 @@ export async function ensureSolanaProgramIsDeployed(
   connection: Connection,
   programSoPath: string,
   programKeypairPath: string,
-): Promise<PublicKey> {
+): Promise<Keypair> {
   let programId: PublicKey;
-
+  let programKeypair;
   try {
     // Read program id from keypair file
-    const programKeypair = await createKeypairFromFile(programKeypairPath);
+    programKeypair = await createKeypairFromFile(programKeypairPath);
     programId = programKeypair.publicKey;
   } catch (err) {
-    const errMsg = (err as Error).message;
-    throw new Error(
-      `Failed to read program keypair at '${programKeypairPath}' due to
-        error: ${errMsg}. Program may need to be deployed with \`solana program
-        deploy $PROGRAM_SO_PATH\``,
+    const caughtErrMsg = (err as Error).message;
+    const errMsg = (
+      `failed to read program keypair at "${programKeypairPath}" due to ` +
+      `error: ${caughtErrMsg}. program may need to be deployed.`
     );
+    throw new Error(errMsg);
   }
   // Check if the program has been deployed
   const programInfo = await connection.getAccountInfo(programId);
   if (programInfo === null) {
     if (fs.existsSync(programSoPath)) {
-      throw new Error(
-        `Program needs to be deployed with \`solana program deploy
-          $PROGRAM_SO_PATH\``,
-      );
+      throw new Error('program needs to be deployed');
     } else {
-      throw new Error('Program needs to be built and deployed');
+      throw new Error('program needs to be built and deployed');
     }
   } else if (!programInfo.executable) {
-    throw new Error('Program is not executable');
+    throw new Error('program is not executable');
   }
-  console.log(`Using program ${programId.toBase58()}`);
-  return programId;
+  console.log(`using program ${programId.toBase58()}`);
+  return programKeypair!;
 }
 
 /**
@@ -88,12 +85,12 @@ export async function getConfig(): Promise<any> {
  */
 export async function getRpcUrl(config: any): Promise<string> {
   try {
-    if (!config.json_rpc_url) throw new Error('Missing RPC URL');
+    if (!config.json_rpc_url) throw new Error('missing RPC URL');
     return config.json_rpc_url;
   } catch (err) {
     console.warn(
-      `Failed to read RPC url from CLI config file, 
-        falling back to localhost`,
+      'failed to read RPC url from CLI config file, ' +
+      'falling back to localhost',
     );
     return 'http://localhost:8899';
   }
@@ -119,13 +116,13 @@ export async function createKeypairFromFile(
  * difference.
  *
  * @param {Connection} connection - Solana connection object.
- * @param {any} config - Solana config settings object.
+ * @param {Keypair} receiver - Keypair of airdrop recipient.
  * @param {number} accountSize - Size of account in bytes.
  * @return {Promise<void>} - Empty promise.
  */
 export async function airdropFundsForAccount(
   connection: Connection,
-  config: any,
+  receiver: Keypair,
   accountSize: number,
 ): Promise<void> {
   const {feeCalculator} = await connection.getRecentBlockhash();
@@ -138,17 +135,14 @@ export async function airdropFundsForAccount(
   // Calculate the cost of sending transactions
   fees += feeCalculator.lamportsPerSignature * 100; // wag
 
-  const payer = await getPayer(config);
-
-  let lamports = await connection.getBalance(payer.publicKey);
+  const lamports = await connection.getBalance(receiver.publicKey);
   if (lamports < fees) {
     // If current balance is not enough to pay for fees, request an airdrop
     const sig = await connection.requestAirdrop(
-      payer.publicKey,
+      receiver.publicKey,
       fees - lamports,
     );
     await connection.confirmTransaction(sig);
-    lamports = await connection.getBalance(payer.publicKey);
   }
 }
 
@@ -163,8 +157,8 @@ export async function getPayer(config: any): Promise<Keypair> {
     return await createKeypairFromFile(config.keypair_path);
   } catch (err) {
     console.warn(
-      `Failed to create keypair from CLI config file, 
-        falling back to new random keypair`,
+      'failed to create keypair from CLI config file, ' +
+      'falling back to new random keypair',
     );
     return Keypair.generate();
   }

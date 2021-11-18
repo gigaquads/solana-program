@@ -21,8 +21,9 @@ class LuckyNumber extends Message {
  */
 async function main() {
   // initialize client interface to deployed on-chain Solana program.
-  const solana = await Solana.getInstance().connect();
-  const program = await solana.getProgram(
+  await Solana.connect();
+
+  const program = await Solana.getProgram(
     `${PROJECT_PATH}/dist/program/base-keypair.json`,
     `${PROJECT_PATH}/dist/program/base.so`,
   );
@@ -31,14 +32,15 @@ async function main() {
   // balance as well as optional storage space used by owner program.)
   const accountSize = 1; // in bytes
   const account = await program.getOrCreateAccount('lucky_number', accountSize);
-  const luckyNumber = new LuckyNumber({value: 69});
+  const value = Math.round(Math.random() * 255);
+  const luckyNumber = new LuckyNumber({value});
 
   // create and execute transaction instruction
-  const tx = program
+  const instr = program
     .newInstruction(luckyNumber)
     .withAccount(account, {isSigner: false, isWritable: true});
 
-  await tx.execute();
+  await instr.execute();
 
   // read updated lucky number from account stored on chain.
   {

@@ -24,10 +24,10 @@ class LuckyNumber extends Message {
 
 async function main() {
   // establish connection with Solana cluster (i.e. devnet|testnet|mainnet)
-  const solana = await Solana.getInstance().connect();
+  await Solana.connect();
 
   // get client for deployed Solana program
-  const program = await solana.getProgram(
+  const program = await Solana.getProgram(
     './rust-program/dist/program/base-keypair.json',
     './rust-program/dist/program/base.so',
   );
@@ -38,13 +38,13 @@ async function main() {
   const luckyNumber = new LuckyNumber({value: 69});
 
   // create and execute transaction instruction
-  const tx = (
+  const instr = (
     program
       .newInstruction(luckyNumber)
       .withAccount(account, {isSigner: false, isWritable: true})
   );
 
-  await tx.execute();
+  await instr.execute();
 
   // read updated lucky number from account stored on chain,
   // deserializing the account data buffer into a LuckyNumber.

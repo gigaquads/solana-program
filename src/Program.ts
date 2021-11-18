@@ -25,13 +25,13 @@ export default class Program {
 
   readonly programSoPath: string;
 
-  _payer?: Keypair;
+  private _config: any = {};
 
-  _config?: any;
+  private _payer: Keypair | null = null;
 
-  _conn?: Connection;
+  private _conn: Connection| null = null;
 
-  _key?: PublicKey;
+  private _keyPair: Keypair | null = null;
 
   /**
    * Loaded YAML config data.
@@ -57,8 +57,15 @@ export default class Program {
   /**
    * Solana program ID or undefined if client not initialized.
    */
+  get keyPair(): Keypair {
+    return this._keyPair!;
+  }
+
+  /**
+   * Solana program ID or undefined if client not initialized.
+   */
   get key(): PublicKey {
-    return this._key!;
+    return this._keyPair!.publicKey;
   }
 
   /**
@@ -78,11 +85,11 @@ export default class Program {
    * @param {Solana} solana - Solana application object.
    * @return {Promise<Program>} - This program.
    */
-  async connect(solana: Solana): Promise<Program> {
-    this._config = solana.config;
-    this._conn = solana.conn;
-    this._payer = solana.payer;
-    this._key = await ensureSolanaProgramIsDeployed(
+  async connect(): Promise<Program> {
+    this._config = Solana.config;
+    this._conn = Solana.conn;
+    this._payer = Solana.payer;
+    this._keyPair = await ensureSolanaProgramIsDeployed(
       this._conn,
       this.programSoPath,
       this.programKeypairPath,
@@ -148,7 +155,7 @@ export default class Program {
   }
 
   /**
-   * Gets (and create, if necessary) a program-derived account.
+   * Gets (and create, if necessary) a program-derived account in a transaction.
    *
    * @param {string} seed - Seed used to generate account's address.
    * @param {number} space - Size of new account in bytes. (Max: 10MB)
@@ -173,12 +180,19 @@ export default class Program {
       // fund the program payer's account if we have insufficient funds
       // to pay for the new account.
       if (process.env.CLUSTER !== 'mainnet') {
-        airdropFundsForAccount(this._conn!, this._config!, space);
+        await airdropFundsForAccount(this._conn!, payer, space);
       }
       // calc min lamports needed for new account to be rent-exempt.
       const minLamportsRequired = await conn.getMinimumBalanceForRentExemption(
         Math.ceil(space),
       );
+      console.log('creating account', {
+        key: pubKey,
+        programId: this.key,
+        lamports: minLamportsRequired,
+        seed,
+        space,
+      });
       // pay for and create new account
       const transaction = new Transaction().add(
         SystemProgram.createAccountWithSeed({
@@ -193,12 +207,28 @@ export default class Program {
       );
       await sendAndConfirmTransaction(conn, transaction, [payer]);
       accountInfo = await conn.getAccountInfo(pubKey);
-    } else {
-      console.warn(
-        'using existing program account because an account already exists ' +
-          'at the specified program-derived address.',
-      );
     }
     return new Account(this, pubKey, accountInfo!);
+  }
+
+  /**
+   * Reassign program ownership to a different account in a transaction.
+   * @param {Account} account - Existing account to which ownership of program
+   * is transferred.
+   * @param {Keypair} payer - Keypair of payer. Defaults to program.payer.
+   */
+  async reassignTo(
+    account: Account,
+    payer: Keypair | null = null,
+  ): Promise<void> {
+    payer = (payer !== null ? payer : this.payer)!;
+    const tx = new Transaction();
+    tx.add(
+      SystemProgram.assign({
+        accountPubkey: account.key,
+        programId: this.key,
+      }),
+    );
+    await sendAndConfirmTransaction(this.conn, tx, [payer, this.keyPair]);
   }
 }
