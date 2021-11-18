@@ -56,7 +56,7 @@ export default class Solana {
    * Initialize web3 connection to solana blockchain.
    * @return {Solana} - This instance, now connected.
    */
-  static async connect(): Promise<Solana> {
+  static async initialize(): Promise<Solana> {
     if (!this._isConnected) {
       this._config = await getConfig();
       this._conn = await establishConnection(this._config!);

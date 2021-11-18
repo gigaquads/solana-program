@@ -20,9 +20,6 @@ class LuckyNumber extends Message {
  * Client main function.
  */
 async function main() {
-  // initialize client interface to deployed on-chain Solana program.
-  await Solana.connect();
-
   const program = await Solana.getProgram(
     `${PROJECT_PATH}/dist/program/base-keypair.json`,
     `${PROJECT_PATH}/dist/program/base.so`,
@@ -51,8 +48,16 @@ async function main() {
   }
 }
 
-// program point of entry:
-main().then(
+/**
+ * Entrypoint for `yarn run start`.
+ */
+async function start(): Promise<void> {
+  // initialize must be called before anything
+  await Solana.initialize();
+  await main();
+}
+
+start().then(
   () => process.exit(),
   (err) => {
     console.error(err);

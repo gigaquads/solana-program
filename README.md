@@ -24,7 +24,7 @@ class LuckyNumber extends Message {
 
 async function main() {
   // establish connection with Solana cluster (i.e. devnet|testnet|mainnet)
-  await Solana.connect();
+  await Solana.initialize();
 
   // get client for deployed Solana program
   const program = await Solana.getProgram(
