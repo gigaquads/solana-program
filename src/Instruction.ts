@@ -25,6 +25,7 @@ export default class Instruction<T extends Message>
 implements InstructionInterface {
   readonly program: Program;
   accounts: Array<AccountMetadata> = [];
+  signers: Set<Keypair> = [];
   data?: T | null;
 
   /**
@@ -61,6 +62,21 @@ implements InstructionInterface {
       ),
     );
     return this;
+  }
+
+  /**
+   * Register a keypair as a signer of the transaction that executes this
+   * instruction..
+   * @param {Keypair | Array<Keypair> | Set<Keypair>} signer - One or more
+   * Keypairs that need to sign the transaction in which the instruction
+   * executes.
+   */
+  withSigner(signer: Keypair | Array<Keypair> | Set<Keypair>) {
+    if (signer instanceof Keypair) {
+      this.signers.add(signer);
+    } else {
+      signer.forEach((s) => this.signers.add(s));
+    }
   }
 
   /**
@@ -111,9 +127,19 @@ implements InstructionInterface {
     tx = tx !== null ? tx : new Transaction();
     tx.add(txInstruction);
 
+    // default to program.payer if arg is null.
     payer = (payer !== null ? payer : prog.payer)!;
 
-    return await sendAndConfirmTransaction(prog.conn, tx, [prog.payer!]);
+    // construct collection of signers
+    // and ensure that it contains the payer keypair.
+    const signers = new Set(this.signers);
+    if (!signers.has(payer)) {
+      signers.add(payer);
+    }
+    // do it!
+    return await sendAndConfirmTransaction(
+      prog.conn, tx, Array.from(signers),
+    );
   }
 
   /**

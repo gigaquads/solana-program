@@ -6,6 +6,7 @@ import {
   sendAndConfirmTransaction,
   SystemProgram,
   Transaction,
+  TransactionInstruction,
 } from '@solana/web3.js';
 
 import Account from './Account';
@@ -160,7 +161,8 @@ export default class Program {
    * @param {string} seed - Seed used to generate account's address.
    * @param {number} space - Size of new account in bytes. (Max: 10MB)
    * @param {Keypair} payer - Keypair of payer. Defaults to program.payer.
-   * @return {Promise<Account>} - An Account object with fetched AccountInfo as
+   * @return {Promise<Account | TransactionInstruction>} - An Account object
+   * with fetched AccountInfo as or the un-executed instruction object.
    * its `info` property.
    *
    */
