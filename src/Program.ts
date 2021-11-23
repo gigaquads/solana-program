@@ -1,20 +1,14 @@
-import {
-  AccountInfo,
-  Connection,
-  Keypair,
-  PublicKey,
-  sendAndConfirmTransaction,
-  SystemProgram,
-  Transaction,
-  TransactionInstruction,
-} from '@solana/web3.js';
+import {Keypair, PublicKey} from '@solana/web3.js';
 
 import Account from './Account';
-import Instruction from './Instruction';
-import Message from './Message';
+import {
+  CustomInstructionBuilder,
+  SystemInstructionBuilder,
+} from './InstructionBuilder';
+import {Payload} from './payload';
 import Solana from './Solana';
 import {
-  airdropFundsForAccount,
+  // airdropFundsForAccount,
   ensureSolanaProgramIsDeployed,
 } from './util';
 
@@ -22,51 +16,22 @@ import {
  * Client for a Solana blockchain program.
  */
 export default class Program {
-  readonly programKeypairPath: string;
-
-  readonly programSoPath: string;
-
-  private _config: any = {};
-
-  private _payer: Keypair | null = null;
-
-  private _conn: Connection| null = null;
-
-  private _keyPair: Keypair | null = null;
-
-  /**
-   * Loaded YAML config data.
-   */
-  get config(): any {
-    return this._config;
-  }
-
-  /**
-   * JSON RPC Connection object or undefined if client not initialized.
-   */
-  get conn(): Connection {
-    return this._conn!;
-  }
-
-  /**
-   * Keypair of program creator, who paid for the program's account.
-   */
-  get payer(): Keypair {
-    return this._payer!;
-  }
+  public readonly programKeypairPath: string;
+  public readonly programSoPath: string;
+  private programKeyPair: Keypair | null = null;
 
   /**
    * Solana program ID or undefined if client not initialized.
    */
   get keyPair(): Keypair {
-    return this._keyPair!;
+    return this.programKeyPair!;
   }
 
   /**
    * Solana program ID or undefined if client not initialized.
    */
   get key(): PublicKey {
-    return this._keyPair!.publicKey;
+    return this.programKeyPair!.publicKey;
   }
 
   /**
@@ -77,7 +42,6 @@ export default class Program {
   constructor(programKeypairPath: string, programSoPath: string) {
     this.programSoPath = programSoPath;
     this.programKeypairPath = programKeypairPath;
-    this._config = {};
   }
 
   /**
@@ -87,11 +51,8 @@ export default class Program {
    * @return {Promise<Program>} - This program.
    */
   async connect(): Promise<Program> {
-    this._config = Solana.config;
-    this._conn = Solana.conn;
-    this._payer = Solana.payer;
-    this._keyPair = await ensureSolanaProgramIsDeployed(
-      this._conn,
+    this.programKeyPair = await ensureSolanaProgramIsDeployed(
+      Solana.conn,
       this.programSoPath,
       this.programKeypairPath,
     );
@@ -102,53 +63,64 @@ export default class Program {
    * Initialize a new Instruction. To execute the instruction on-chain (in a
    * transaction), use instr.execute().
    *
-   * @param {Message?} data - Optional data to bind to instruction.
-   * @return {Instruction<T>} - An initialized Instruction.
+   * @param {Payload?} data - Optional data to bind to instruction.
+   * @return {InstructionBuilder} - An initialized Instruction.
    */
-  newInstruction<T extends Message>(data: T | null = null): Instruction<T> {
-    const instruction = new Instruction<T>(this);
-    instruction.data = data;
-    return instruction;
+  newInstruction(data: Payload | null = null): CustomInstructionBuilder {
+    const builder = new CustomInstructionBuilder(this);
+    builder.data = data;
+    return builder;
   }
 
   /**
-   *
+   * Derive a new address from a base public key (most likely a user's public
+   * key). This should be used when you want a user and the program to be
+   * "co-signers" of an account. In other words, any account created through
+   * this method will be unique per user.
+   * @param {PublicKey} fromKey - Base key from which to derive the new one.
    * @param {string} seed - Arbitrary cryptographic string to use when
    * generating new public key.
-   * @return {PublicKey} - Generated PDA in form of a PublicKey.
+   * @return {PublicKey} - Generated public key.
    */
-  async createProgramDerivedAddressWithSeed(seed: string): Promise<PublicKey> {
-    return await PublicKey.createWithSeed(
-      this.payer!.publicKey,
-      seed,
-      this.key,
-    );
+  async deriveAddress(fromKey: PublicKey, seed: string): Promise<PublicKey> {
+    return await PublicKey.createWithSeed(fromKey, seed, this.key);
   }
 
   /**
-   * Return account exists at the program-derived address, derived from
-   * the given seed.
-   *
-   * @param {string} seed - Seed used to generate account's address.
-   * @return {AccountInfo<Buffer> | null} - retrieved account info.
+   * Generate a program-derived address, using a list of given seeds. This
+   * method should be used if *only the program* should be a legal signer for
+   * the account. The data stored at a PDA is global to the program; whereas,
+   * addresses generated with `deriveAddress` are unique per user,
+   * where the user and the program are effectively "co-signers" of the account.
+   * The resulting public key is not actually a public key, as there is no
+   * corresponding private key.
+   * @param {string | Buffer | Array<string | Buffer>} seeds - seed values, used
+   * to derive new address.
+   * @return {Promise<[PublicKey, number]>} - Derived address & nonce.
    */
-  async getAccountInfo(seed: string): Promise<AccountInfo<Buffer> | null> {
-    const pubKey = await this.createProgramDerivedAddressWithSeed(seed);
-    return await this._conn!.getAccountInfo(pubKey);
+  async deriveProgramAddress(
+    seeds: string | Buffer | Array<string | Buffer>,
+  ): Promise<[PublicKey, number]> {
+    // convert seeds arg to list of buffers
+    seeds = seeds instanceof Array ? seeds : [seeds];
+    const seedBuffers = seeds.map((x) =>
+      x instanceof Buffer ? x : Buffer.from(x),
+    );
+    // generate PDA (public key, nonce)
+    return await PublicKey.findProgramAddress(seedBuffers, this.key);
   }
 
   /**
    * Return a new Account object, containing AccountInfo owned and fetched by
    * this program.
    *
-   * @param {string} seed - Seed value used to generate prorgam-derived address
+   * @param {string} key - prorgam-derived address
    * of account being fetched.
    * @return {Promise<Account>} - An Account object with fetched AccountInfo as
    * its `info` property.
    */
-  async getAccount(seed: string): Promise<Account> {
-    const key = await this.createProgramDerivedAddressWithSeed(seed);
-    const info = await this._conn!.getAccountInfo(key);
+  async getAccount(key: PublicKey): Promise<Account> {
+    const info = await Solana.conn.getAccountInfo(key);
     if (!info) {
       throw Error(`could not find account: ${key}`);
     }
@@ -156,81 +128,54 @@ export default class Program {
   }
 
   /**
-   * Gets (and create, if necessary) a program-derived account in a transaction.
-   *
-   * @param {string} seed - Seed used to generate account's address.
-   * @param {number} space - Size of new account in bytes. (Max: 10MB)
-   * @param {Keypair} payer - Keypair of payer. Defaults to program.payer.
-   * @return {Promise<Account | TransactionInstruction>} - An Account object
-   * with fetched AccountInfo as or the un-executed instruction object.
-   * its `info` property.
-   *
+   * Return true if an account exists and is owned by this program.
+   * @param {PublicKey} key - program-derived account address.
+   * @return {boolean} True, if account is found.
    */
-  async getOrCreateAccount(
-    seed: string,
-    space: number = 0,
-    payer: Keypair | null = null,
-  ): Promise<Account> {
-    const conn = this.conn!;
-    const pubKey = await this.createProgramDerivedAddressWithSeed(seed);
-
-    payer = (payer !== null ? payer : this.payer)!;
-
-    let accountInfo = await conn.getAccountInfo(pubKey);
-
-    if (accountInfo === null) {
-      // fund the program payer's account if we have insufficient funds
-      // to pay for the new account.
-      if (process.env.CLUSTER !== 'mainnet') {
-        await airdropFundsForAccount(this._conn!, payer, space);
-      }
-      // calc min lamports needed for new account to be rent-exempt.
-      const minLamportsRequired = await conn.getMinimumBalanceForRentExemption(
-        Math.ceil(space),
-      );
-      console.log('creating account', {
-        key: pubKey,
-        programId: this.key,
-        lamports: minLamportsRequired,
-        seed,
-        space,
-      });
-      // pay for and create new account
-      const transaction = new Transaction().add(
-        SystemProgram.createAccountWithSeed({
-          lamports: minLamportsRequired,
-          fromPubkey: payer.publicKey,
-          basePubkey: payer.publicKey,
-          newAccountPubkey: pubKey,
-          programId: this.key,
-          seed,
-          space,
-        }),
-      );
-      await sendAndConfirmTransaction(conn, transaction, [payer]);
-      accountInfo = await conn.getAccountInfo(pubKey);
-    }
-    return new Account(this, pubKey, accountInfo!);
+  async hasAccount(key: PublicKey): Promise<boolean> {
+    return (await Solana.conn.getAccountInfo(key)) !== null;
   }
 
   /**
-   * Reassign program ownership to a different account in a transaction.
-   * @param {Account} account - Existing account to which ownership of program
-   * is transferred.
-   * @param {Keypair} payer - Keypair of payer. Defaults to program.payer.
+   * Create a new program-owned account, using a program-derived address (PDA)
+   * derived from the payer's public key.
+   * @param {Keypair} payer - keypair of transaction fee payer.
+   * @param {string} seed - seed for program-derived address.
+   * @param {number} space - number of bytes to allocate.
+   * @param {number | null} lamports - amount of funds to allocate.
+   * @return {SystemInstructionBuilder} - an instruction builder.
    */
-  async reassignTo(
-    account: Account,
-    payer: Keypair | null = null,
-  ): Promise<void> {
-    payer = (payer !== null ? payer : this.payer)!;
-    const tx = new Transaction();
-    tx.add(
-      SystemProgram.assign({
-        accountPubkey: account.key,
-        programId: this.key,
-      }),
-    );
-    await sendAndConfirmTransaction(this.conn, tx, [payer, this.keyPair]);
+  createUserSpaceAccount(
+    payer: Keypair,
+    seed: string,
+    space: number | Payload,
+    lamports: number | null = null,
+  ): SystemInstructionBuilder {
+    space = space instanceof Payload ? space.size : space;
+    const builder = new SystemInstructionBuilder();
+    const key = async () => await this.deriveAddress(payer.publicKey, seed);
+    builder.createUserSpaceAccount(this, payer, seed, key, space, lamports);
+    return builder;
+  }
+
+  /**
+   * Create a new program-owned account, using a program-derived address (PDA)
+   * derived from the payer's public key.
+   * @param {Keypair} payer - keypair of transaction fee payer.
+   * @param {PublicKey} key - program-derived address.
+   * @param {number} space - number of bytes to allocate.
+   * @param {number | null} lamports - amount of funds to allocate.
+   * @return {SystemInstructionBuilder} - an instruction builder.
+   */
+  createProgramSpaceAccount(
+    payer: Keypair,
+    key: PublicKey,
+    space: number | Payload,
+    lamports: number | null = null,
+  ): SystemInstructionBuilder {
+    space = space instanceof Payload ? space.size : space;
+    const builder = new SystemInstructionBuilder();
+    builder.createProgramSpaceAccount(this, payer, key, space, lamports);
+    return builder;
   }
 }

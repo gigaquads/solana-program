@@ -37,10 +37,9 @@ export async function ensureSolanaProgramIsDeployed(
     programId = programKeypair.publicKey;
   } catch (err) {
     const caughtErrMsg = (err as Error).message;
-    const errMsg = (
+    const errMsg =
       `failed to read program keypair at "${programKeypairPath}" due to ` +
-      `error: ${caughtErrMsg}. program may need to be deployed.`
-    );
+      `error: ${caughtErrMsg}. program may need to be deployed.`;
     throw new Error(errMsg);
   }
   // Check if the program has been deployed
@@ -90,7 +89,7 @@ export async function getRpcUrl(config: any): Promise<string> {
   } catch (err) {
     console.warn(
       'failed to read RPC url from CLI config file, ' +
-      'falling back to localhost',
+        'falling back to localhost',
     );
     return 'http://localhost:8899';
   }
@@ -152,14 +151,27 @@ export async function airdropFundsForAccount(
  * @param {any} config - Solana config settings object.
  * @return {Promise<Keypair>} - payer Keypair.
  */
-export async function getPayer(config: any): Promise<Keypair> {
-  try {
-    return await createKeypairFromFile(config.keypair_path);
-  } catch (err) {
-    console.warn(
-      'failed to create keypair from CLI config file, ' +
-      'falling back to new random keypair',
-    );
-    return Keypair.generate();
-  }
+export async function getConfigKeypair(config: any): Promise<Keypair> {
+  return await createKeypairFromFile(config.keypair_path);
+}
+
+/**
+ * Load a keypair file.
+ *
+ * @param {string} path - Path to keypair file.
+ * @return {Promise<Keypair>} - payer Keypair.
+ */
+export async function loadKeypair(path: string): Promise<Keypair> {
+  return await createKeypairFromFile(path);
+}
+
+/**
+ * Determine if a given object is an async function.
+ * @param {any} x - Any object.
+ * @return {boolean} - True, if object is an async function.
+ */
+export function isAsyncFunction(x: any): boolean {
+  return (
+    x && typeof x.then === 'function' && x[Symbol.toStringTag] === 'Promise'
+  );
 }

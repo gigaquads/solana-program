@@ -12,83 +12,64 @@ it. Finally, we retreived the updated lucky number and log it.
 
 ```typescript
 /**
- * LuckyNumber is the data structure serialized to and from the on-chain Rust
- * program. In this case, it's just a single short int representing a "lucky
- * number" that the Rust app stores in an account.
+ * Define instruction payload for setting lucky number.
  */
 @variant(0)
-class LuckyNumber extends Message {
+class SetLuckyNumber extends Payload {
   @field('u8')
   value?: number;
 }
 
-async function main() {
-  // establish connection with Solana cluster (i.e. devnet|testnet|mainnet)
-  await Solana.initialize();
-
-  // get client for deployed Solana program
-  const program = await Solana.getProgram(
-    './rust-program/dist/program/base-keypair.json',
-    './rust-program/dist/program/base.so',
-  );
-
-  // create program-owned account for "lucky number" storage
-  const accountSize = 1; // size in bytes
-  const account = await program.getOrCreateAccount('lucky_number', accountSize);
-  const luckyNumber = new LuckyNumber({value: 69});
-
-  // create and execute transaction instruction
-  const instr = (
-    program
-      .newInstruction(luckyNumber)
-      .withAccount(account, {isSigner: false, isWritable: true})
-  );
-
-  await instr.execute();
-
-  // read updated lucky number from account stored on chain,
-  // deserializing the account data buffer into a LuckyNumber.
-  {
-    const account = await program.getAccount('lucky_number');
-    const luckyNumber = new LuckyNumber(account);
-
-    console.log(`lucky number now set to ${luckyNumber.value}`);
+/**
+ * Define program client with method for "set lucky number" instruction.
+ */
+class LuckyNumberProgram extends Program {
+  public setLuckyNumber(
+    account: Addressable, data: CreateLuckyNumber,
+  ): CustomInstructionBuilder {
+    return this
+      .newInstruction(data)
+      .withAccount(account, {isWritable: true});
   }
+}
+
+/**
+ * Create or update on-chain lucky number.
+ */
+async function main() {
+  await Solana.initialize()
+
+  const program = new LuckyNumberProgram(keypairPath, soPath);
+  const payer = Solana.cli.keyPair;
+
+  await program.connect();
+
+  // compute user-space address for new account
+  const key = await program.deriveAddress(payer.publicKey, 'lucky_number');
+
+  // new lucky number between 0 .. 100
+  const payload = new SetLuckyNumber({
+    value: Math.round(100 * Math.random())
+  })
+  // init, build and execute transaction
+  const tx = Solana.transaction();
+
+  // create or update lucky number account on-chain
+  if (!(await program.hasAccount(key))) {
+    tx.add(program.createAccount(payer, 'lucky_number', payload));
+  }
+  tx.add(program.setLuckyNumber(key, value));
+
+  // sign & execute transaction
+  const signature = await tx.sign(payer).execute();
+  console.log('executed transaction signature', signature);
+}
 ```
 
 ## Background & Motivation
 The first iteration of this library was based on the official "Hello, world!"
 example. Unfortunately, at the time of writing, neither the official example nor
 others out there on the web offered any insight into how real world programs
-should be designed or structured.
-
-In particular, the official example walked through the creation of a program
-that could only handle a single type of instruction. This would be like a web
-framework whose apps only support a single endpoint. As a result, developers
-have had to develop all sorts of hard-coded, idiosyncratic ways to represent and
-route variable kinds of instruction data. Moreover, when they fail to accomplish
-this, they jump prematurely to Anchor, a high-level framework, before having
-an adequate grasp of the basic SDK.
-
-The main technical reason for this limitation is Solana's chosen serialization
-library: [Borsh](https://github.com/near/borsh). It does not currently support
-clean or easy serialization of JavaScript objects to and from Rust enum
-variants, which from a backend routing perspective would be ideal. With Rust's
-strict memory management rules, using a single struct to represent many
-different kinds of payloads isn't entirely feasible; nevertheless, this is
-exactly what online examples out there leave you thinking you need to do.
-
-To solve this problem, we implemented a few simple typescript decorators --
-`@variant` and `@field` -- which you can see in the example below (based on the
-[PR found here](https://github.com/near/borsh-js/pull/39)). These
-decorators abstract out all of the boilerplate for generating
-Borsh schemas, serialiizing and deserializing, while also reducing the amount  
-of deserialization code in Rust to just...
-
-```rust
-impl Instruction {
-    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        Ok(Self::try_from_slice(input).unwrap())
-    }
-}
+should be designed or structured. This library aims to be a middle ground
+between raw web3 and anchor.
 ```

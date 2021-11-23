@@ -2,14 +2,47 @@ import * as borsh from 'borsh';
 import {Account} from '.';
 
 /**
- * Message objects are used for sending and receiving Instruction data via their
+ * A decorator that registers a class as a Rust enum variant.
+ *
+ * @param {number} index - Integer offset of the variant in the Rust enum to
+ * which the variant belows.
+ * @return {Function} - Constructor that stores variant index in class metadata.
+ */
+export function variant(index: number) {
+  return function (constructor: Function) {
+    Reflect.defineMetadata('variant', index, constructor);
+  };
+}
+
+/**
+ * A decorator that registers a property declared on a class as a serializable
+ * field, targeting a specific Rust datatype, like u64, etc.
+ *
+ * @param {string} type - Rust type, like u8, etc., that we want to
+ * (de)serialize this field to/from.
+ * @return {Function} - The modified property.
+ */
+export function field(type: string | Array<string>) {
+  return function (target: {} | any, name: PropertyKey): any {
+    let schema = Reflect.getMetadata('schema', target.constructor);
+    if (!schema) {
+      schema = {fields: [], kind: 'struct', dependencies: new Set()};
+      Reflect.defineMetadata('schema', schema, target.constructor);
+    }
+    schema.fields.push([name, type]);
+  };
+}
+
+/**
+ * Payload objects are used for sending and receiving Instruction data via their
  * `fromBuffer` and `toBuffer` methods.
  */
-export default class Message {
+export class Payload {
+  // eslint-disable-next-line no-undef
   [key: string]: any;
 
   /**
-   * Return a new Message isntance.
+   * Return a new Payload isntance.
    *
    * @param {any | Account | null} source - Either an account whose data we
    * intend to deserialize into this message's fields or an object containing
@@ -42,6 +75,14 @@ export default class Message {
    */
   get schema(): any {
     return Reflect.getMetadata('schema', this.constructor);
+  }
+
+  /**
+   * Return size of serialized object in bytes.
+   * @return {number} - size of buffer upon serialization.
+   */
+  get size(): number {
+    return this.toBuffer().length;
   }
 
   /**

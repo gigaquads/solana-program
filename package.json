@@ -24,7 +24,7 @@
     "start:example:luckyNumber": "ts-node src/examples/luckyNumber.ts",
     "start-with-test-validator": "start-server-and-test 'solana-test-validator --reset --quiet' http://localhost:8899/health start",
     "lint": "eslint --ext .ts src/* && prettier --check \"src/**/*.ts\"",
-    "lint:fix": "eslint --ext .ts src/* --fix && prettier --write \"src/**/*.ts\"",
+    "lint:fix": "eslint --ext .ts src/* --fix",
     "pretty": "prettier --write '{,src/**/}*.ts'"
   },
   "dependencies": {
@@ -49,6 +49,7 @@
     "eslint": "^8.2.0",
     "eslint-config-google": "^0.14.0",
     "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^4.0.0",
     "prettier": "^2.4.1",
     "start-server-and-test": "^1.14.0",

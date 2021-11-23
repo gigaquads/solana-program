@@ -6,7 +6,7 @@
  * @return {Function} - Constructor that stores variant index in class metadata.
  */
 export function variant(index: number) {
-  return function(constructor: Function) {
+  return function (constructor: Function) {
     Reflect.defineMetadata('variant', index, constructor);
   };
 }
@@ -20,7 +20,7 @@ export function variant(index: number) {
  * @return {Function} - The modified property.
  */
 export function field(type: string | Array<string>) {
-  return function(target: {} | any, name: PropertyKey): any {
+  return function (target: {} | any, name: PropertyKey): any {
     let schema = Reflect.getMetadata('schema', target.constructor);
     if (!schema) {
       schema = {fields: [], kind: 'struct', dependencies: new Set()};

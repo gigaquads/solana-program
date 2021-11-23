@@ -1,7 +1,8 @@
 import 'reflect-metadata';
-import Message from '../Message';
-import {variant, field} from '../decorators';
+import {Payload, variant, field} from '../payload';
 import Solana from '../Solana';
+import Program from '../Program';
+import {Addressable, CustomInstructionBuilder} from '../InstructionBuilder';
 
 const PROJECT_PATH =
   process.env.PROJECT_PATH || `${process.env.HOME}/projects/rust/solana/base/`;
@@ -11,41 +12,114 @@ const PROJECT_PATH =
  * gets deserialized to a Rust enum variant.
  */
 @variant(0)
-class LuckyNumber extends Message {
+class CreateLuckyNumber extends Payload {
   @field('u8')
-    value?: number;
+  value?: number;
+
+  @field('String')
+  lucky_number_owner_key?: string;
+}
+
+/**
+ * Update existing lucky number account.
+ */
+@variant(1)
+class UpdateLuckyNumber extends Payload {
+  @field('u8')
+  value?: number;
+
+  @field('String')
+  lucky_number_owner_key?: string;
+}
+
+/**
+ * Lucky number program.
+ */
+class LuckyNumberProgram extends Program {
+  /**
+   * Create an instruction that updates the program's lucky number.
+   * @param {Addressable} account - Account or public key of account.
+   * @param {CreateLuckyNumber} data - instruction data
+   * @return {CustomInstructionBuilder} - and Instruction builder instance.
+   */
+  public initializeLuckyNumber(
+    account: Addressable,
+    data: CreateLuckyNumber,
+  ): CustomInstructionBuilder {
+    return this.newInstruction(data).withAccount(account, {isWritable: true});
+  }
+
+  /**
+   * Create an instruction that updates the program's lucky number.
+   * @param {Addressable} account - Account or public key of account.
+   * @param {UpdateLuckyNumber} data - instruction data
+   * @return {CustomInstructionBuilder} - and Instruction builder instance.
+   */
+  public updateLuckyNumber(
+    account: Addressable,
+    data: UpdateLuckyNumber,
+  ): CustomInstructionBuilder {
+    return this.newInstruction(data).withAccount(account, {isWritable: true});
+  }
 }
 
 /**
  * Client main function.
  */
 async function main() {
-  const program = await Solana.getProgram(
+  const program = new LuckyNumberProgram(
     `${PROJECT_PATH}/dist/program/base-keypair.json`,
     `${PROJECT_PATH}/dist/program/base.so`,
   );
 
-  // create account to store lucky number in. (background: accounts hold a SOL
-  // balance as well as optional storage space used by owner program.)
-  const accountSize = 1; // in bytes
-  const account = await program.getOrCreateAccount('lucky_number', accountSize);
-  const value = Math.round(Math.random() * 255);
-  const luckyNumber = new LuckyNumber({value});
+  await program.connect();
 
-  // create and execute transaction instruction
-  const instr = program
-    .newInstruction(luckyNumber)
-    .withAccount(account, {isSigner: false, isWritable: true});
+  // just who's gonna pay for the transaction?
+  const payer = Solana.cli.keyPair;
 
-  await instr.execute();
+  // we're going to create an account to store the user's lucky number in, so we
+  // need to derive an address for the account. we elect here to use the
+  // transaction payer's public key.
+  const key = await program.deriveAddress(
+    payer.publicKey,
+    'lucky_number',
+  );
 
-  // read updated lucky number from account stored on chain.
-  {
-    const account = await program.getAccount('lucky_number');
-    const luckyNumber = new LuckyNumber(account);
+  // new lucky number between 0 .. 100
+  const newLuckyNumber = Math.round(100 * Math.random());
 
-    console.log(`lucky number now set to ${luckyNumber.value}`);
+  // init, build and execute transaction
+  const tx = Solana.transaction();
+
+  if (await program.hasAccount(key)) {
+    // if account exists, just update existing value,
+    // no need to create new account
+    console.log('updating lucky number...');
+    tx.add(
+      program.updateLuckyNumber(
+        key,
+        new UpdateLuckyNumber({
+          value: newLuckyNumber,
+          lucky_number_owner_key: payer.publicKey.toString(),
+        }),
+      ),
+    );
+  } else {
+    // create a lucky_number account for the payer
+    // and initialize a value.
+    console.log('creating account and initializing lucky number...');
+    const payload = new CreateLuckyNumber({
+      value: newLuckyNumber,
+      lucky_number_owner_key: payer.publicKey.toString(),
+    });
+    tx.add(
+      program.createUserSpaceAccount(payer, 'lucky_number', payload),
+      program.initializeLuckyNumber(key, payload)
+    );
   }
+  // execute transaction
+  const signature = await tx.sign(payer).execute();
+  console.log('executed transaction signature', signature);
 }
 
 /**
