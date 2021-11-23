@@ -25,7 +25,7 @@ class SetLuckyNumber extends Payload {
  */
 class LuckyNumberProgram extends Program {
   public setLuckyNumber(
-    account: Addressable, data: CreateLuckyNumber,
+    account: Addressable, data: SetLuckyNumber,
   ): CustomInstructionBuilder {
     return this
       .newInstruction(data)
