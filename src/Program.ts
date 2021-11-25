@@ -30,7 +30,7 @@ export default class Program {
   /**
    * Solana program ID or undefined if client not initialized.
    */
-  get key(): PublicKey {
+  get id(): PublicKey {
     return this.programKeyPair!.publicKey;
   }
 
@@ -82,8 +82,12 @@ export default class Program {
    * generating new public key.
    * @return {PublicKey} - Generated public key.
    */
-  async deriveAddress(fromKey: PublicKey, seed: string): Promise<PublicKey> {
-    return await PublicKey.createWithSeed(fromKey, seed, this.key);
+  async deriveAddress(
+    fromKey: PublicKey | Keypair,
+    seed: string,
+  ): Promise<PublicKey> {
+    fromKey = fromKey instanceof PublicKey ? fromKey : fromKey.publicKey;
+    return await PublicKey.createWithSeed(fromKey, seed, this.id);
   }
 
   /**
@@ -107,7 +111,7 @@ export default class Program {
       x instanceof Buffer ? x : Buffer.from(x),
     );
     // generate PDA (public key, nonce)
-    return await PublicKey.findProgramAddress(seedBuffers, this.key);
+    return await PublicKey.findProgramAddress(seedBuffers, this.id);
   }
 
   /**
@@ -137,45 +141,53 @@ export default class Program {
   }
 
   /**
-   * Create a new program-owned account, using a program-derived address (PDA)
-   * derived from the payer's public key.
+   * Create a new program-owned account.
    * @param {Keypair} payer - keypair of transaction fee payer.
    * @param {string} seed - seed for program-derived address.
+   * @param {PublicKey} key - public key "address" of new account.
    * @param {number} space - number of bytes to allocate.
    * @param {number | null} lamports - amount of funds to allocate.
    * @return {SystemInstructionBuilder} - an instruction builder.
    */
-  createUserSpaceAccount(
+  createAccountWithSeed(
     payer: Keypair,
-    seed: string,
+    seed: string | Function,
+    key: PublicKey | Function,
     space: number | Payload,
-    lamports: number | null = null,
+    lamports: number | null | Function = null,
   ): SystemInstructionBuilder {
-    space = space instanceof Payload ? space.size : space;
+    const resolvedSpace: number =
+      space instanceof Payload ? space.space : space;
     const builder = new SystemInstructionBuilder();
-    const key = async () => await this.deriveAddress(payer.publicKey, seed);
-    builder.createUserSpaceAccount(this, payer, seed, key, space, lamports);
+    builder.createAccountWithSeed(
+      this,
+      payer,
+      seed,
+      key,
+      resolvedSpace,
+      lamports,
+    );
     return builder;
   }
 
   /**
-   * Create a new program-owned account, using a program-derived address (PDA)
-   * derived from the payer's public key.
+   * Create a new program-owned account,
    * @param {Keypair} payer - keypair of transaction fee payer.
-   * @param {PublicKey} key - program-derived address.
+   * @param {PublicKey} key - public key "address" of new account.
    * @param {number} space - number of bytes to allocate.
    * @param {number | null} lamports - amount of funds to allocate.
    * @return {SystemInstructionBuilder} - an instruction builder.
    */
-  createProgramSpaceAccount(
+  createAccount(
     payer: Keypair,
-    key: PublicKey,
+    key: PublicKey | Function,
     space: number | Payload,
-    lamports: number | null = null,
+    lamports: number | null | Function = null,
   ): SystemInstructionBuilder {
-    space = space instanceof Payload ? space.size : space;
+    const resolvedSpace: number =
+      space instanceof Payload ? space.space : space;
     const builder = new SystemInstructionBuilder();
-    builder.createProgramSpaceAccount(this, payer, key, space, lamports);
+    builder.createAccount(this, payer, key, resolvedSpace, lamports);
     return builder;
   }
 }

@@ -1,4 +1,6 @@
 import {
+  CreateAccountParams,
+  CreateAccountWithSeedParams,
   Keypair,
   PublicKey,
   SystemProgram,
@@ -70,14 +72,14 @@ export class SystemInstructionBuilder extends InstructionBuilder {
    * @param {Program} program - Program to derive address from.
    * @param {Keypair} payer - Keypair of transaction payer.
    * @param {string} seed - Seed for program-derived address.
-   * @param {PublicKey} key - Program-derived address.
+   * @param {PublicKey} key - public key of new account.
    * @param {number} space - Number of bytes to allocate.
    * @param {number | null} lamports - Amount of funding for account.
    */
-  public createUserSpaceAccount(
+  public createAccountWithSeed(
     program: Program,
     payer: Keypair,
-    seed: string,
+    seed: string | Function,
     key: PublicKey | Function,
     space: number,
     lamports: number | null | Function = null,
@@ -95,13 +97,16 @@ export class SystemInstructionBuilder extends InstructionBuilder {
     // set the factory method used as build time to contruct the
     // TransactionInstruction object appropriate for the createAccount
     // system call.
-    this.systemInstructionFactory = (params: any): TransactionInstruction =>
-      SystemProgram.createAccountWithSeed(params);
+    this.systemInstructionFactory = (
+      params: CreateAccountWithSeedParams,
+    ): TransactionInstruction => {
+      return SystemProgram.createAccountWithSeed(params);
+    };
     // set params used by this system instruction
     this.params = {
       fromPubkey: payer.publicKey,
       basePubkey: payer.publicKey,
-      programId: program.key,
+      programId: program.id,
       newAccountPubkey: key,
       lamports,
       seed,
@@ -119,7 +124,7 @@ export class SystemInstructionBuilder extends InstructionBuilder {
    * @param {number} space - Number of bytes to allocate.
    * @param {number | null} lamports - Amount of funding for account.
    */
-  public createProgramSpaceAccount(
+  public createAccount(
     program: Program,
     payer: Keypair,
     key: PublicKey | Function,
@@ -139,13 +144,14 @@ export class SystemInstructionBuilder extends InstructionBuilder {
     // set the factory method used as build time to contruct the
     // TransactionInstruction object appropriate for the createAccount
     // system call.
-    this.systemInstructionFactory = (params: any): TransactionInstruction =>
-      SystemProgram.createAccount(params);
+    this.systemInstructionFactory = (
+      params: CreateAccountParams,
+    ): TransactionInstruction => SystemProgram.createAccount(params);
     // set params used by this system instruction
     this.params = {
       fromPubkey: payer.publicKey,
       newAccountPubkey: key,
-      programId: program.key,
+      programId: program.id,
       lamports,
       space,
     };
@@ -199,10 +205,8 @@ export class CustomInstructionBuilder extends InstructionBuilder {
    * @return {TransactionInstruction} - The generated TransactionInstruction.
    */
   public async build(): Promise<TransactionInstruction> {
-    const prog = this.program;
-
     // serialize Payload to buffer as instruction data
-    const data = this.data !== null ? this.data!.toBuffer() : Buffer.alloc(0);
+    const data = this.data ? this.data!.toBuffer() : Buffer.alloc(0);
     // build up account metadata needed by solana SDK
     const keys = this.accounts.map((meta: AccountMetadata) => {
       return {
@@ -214,7 +218,7 @@ export class CustomInstructionBuilder extends InstructionBuilder {
 
     // init new transaction containing instruction and send
     return new TransactionInstruction({
-      programId: prog.key,
+      programId: this.program.id,
       keys,
       data,
     });

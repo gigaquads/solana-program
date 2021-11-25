@@ -8,7 +8,7 @@ import {Account} from '.';
  * which the variant belows.
  * @return {Function} - Constructor that stores variant index in class metadata.
  */
-export function variant(index: number) {
+export function variant(index: number): Function {
   return function (constructor: Function) {
     Reflect.defineMetadata('variant', index, constructor);
   };
@@ -22,7 +22,7 @@ export function variant(index: number) {
  * (de)serialize this field to/from.
  * @return {Function} - The modified property.
  */
-export function field(type: string | Array<string>) {
+export function field(type: string | Array<string>): Function {
   return function (target: {} | any, name: PropertyKey): any {
     let schema = Reflect.getMetadata('schema', target.constructor);
     if (!schema) {
@@ -81,8 +81,10 @@ export class Payload {
    * Return size of serialized object in bytes.
    * @return {number} - size of buffer upon serialization.
    */
-  get size(): number {
-    return this.toBuffer().length;
+  get space(): number {
+    // NOTE: we subtract 1 because the first byte is a "tag", not part of the
+    // instance object/struct to be serialized.
+    return this.toBuffer().length - 1;
   }
 
   /**

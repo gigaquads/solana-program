@@ -15,9 +15,6 @@ const PROJECT_PATH =
 class CreateLuckyNumber extends Payload {
   @field('u8')
   value?: number;
-
-  @field('String')
-  lucky_number_owner_key?: string;
 }
 
 /**
@@ -27,9 +24,6 @@ class CreateLuckyNumber extends Payload {
 class UpdateLuckyNumber extends Payload {
   @field('u8')
   value?: number;
-
-  @field('String')
-  lucky_number_owner_key?: string;
 }
 
 /**
@@ -80,41 +74,29 @@ async function main() {
   // we're going to create an account to store the user's lucky number in, so we
   // need to derive an address for the account. we elect here to use the
   // transaction payer's public key.
-  const key = await program.deriveAddress(
-    payer.publicKey,
-    'lucky_number',
-  );
+  // const key = await program.deriveAddress(payer.publicKey, 'lucky_number');
+  // eslint-disable-next-line no-unused-vars
+  const key = await program.deriveAddress(payer, 'lucky_number');
 
   // new lucky number between 0 .. 100
-  const newLuckyNumber = Math.round(100 * Math.random());
+  const value = Math.round(100 * Math.random());
 
   // init, build and execute transaction
   const tx = Solana.transaction();
 
   if (await program.hasAccount(key)) {
+    console.log('updating lucky number...');
     // if account exists, just update existing value,
     // no need to create new account
-    console.log('updating lucky number...');
-    tx.add(
-      program.updateLuckyNumber(
-        key,
-        new UpdateLuckyNumber({
-          value: newLuckyNumber,
-          lucky_number_owner_key: payer.publicKey.toString(),
-        }),
-      ),
-    );
+    tx.add(program.updateLuckyNumber(key, new UpdateLuckyNumber({value})));
   } else {
+    console.log('creating account and initializing lucky number...');
     // create a lucky_number account for the payer
     // and initialize a value.
-    console.log('creating account and initializing lucky number...');
-    const payload = new CreateLuckyNumber({
-      value: newLuckyNumber,
-      lucky_number_owner_key: payer.publicKey.toString(),
-    });
+    const payload = new CreateLuckyNumber({value});
     tx.add(
-      program.createUserSpaceAccount(payer, 'lucky_number', payload),
-      program.initializeLuckyNumber(key, payload)
+      program.createAccountWithSeed(payer, 'lucky_number', key, payload),
+      program.initializeLuckyNumber(key, payload),
     );
   }
   // execute transaction
