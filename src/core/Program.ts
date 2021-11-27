@@ -122,10 +122,10 @@ export default class Program {
    * @return {Promise<Account>} - An Account object with fetched AccountInfo as
    * its `info` property.
    */
-  async getAccount(key: PublicKey): Promise<Account> {
+  async getAccount(key: PublicKey): Promise<Account | null> {
     const info = await Solana.conn.getAccountInfo(key);
     if (!info) {
-      throw Error(`could not find account: ${key}`);
+      return null;
     }
     return new Account(this, key, info!);
   }
