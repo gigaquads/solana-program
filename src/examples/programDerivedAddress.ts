@@ -1,28 +1,24 @@
 import 'reflect-metadata';
 import InstructionData from '../core/InstructionData';
+import {variant, field} from '../decorators';
 import Solana from '../core/Solana';
 import Program from '../core/Program';
-import {Addressable, CustomInstructionBuilder} from '../core/builders';
-import {variant, field} from '../decorators';
+import {CustomInstructionBuilder} from '../core/builders';
 
 const PROJECT_PATH =
   process.env.PROJECT_PATH || `${process.env.HOME}/projects/rust/solana/base/`;
 
 /**
- * Data structure received by Rust program containing a "lucky number". This
- * gets deserialized to a Rust enum variant.
+ * Data to store in account @ our program-derived address (PDA).
  */
 @variant(0)
-class CreateLuckyNumber extends InstructionData {
+class FirstValue extends InstructionData {
   @field('u8')
   value?: number;
 }
 
-/**
- * Update existing lucky number account.
- */
 @variant(1)
-class UpdateLuckyNumber extends InstructionData {
+class NewValue extends InstructionData {
   @field('u8')
   value?: number;
 }
@@ -30,31 +26,23 @@ class UpdateLuckyNumber extends InstructionData {
 /**
  * Lucky number program.
  */
-class LuckyNumberProgram extends Program {
+class PdaProgram extends Program {
   /**
-   * Create an instruction that updates the program's lucky number.
-   * @param {Addressable} account - Account or public key of account.
-   * @param {CreateLuckyNumber} data - instruction data
+   * Initialize the on-chain value stored @ our PDA.
+   * @param {FirstValue} data - instruction data
    * @return {CustomInstructionBuilder} - and Instruction builder instance.
    */
-  public initializeLuckyNumber(
-    account: Addressable,
-    data: CreateLuckyNumber,
-  ): CustomInstructionBuilder {
-    return this.newInstruction(data).withAccount(account, {isWritable: true});
+  public initializeValue(payload: FirstValue): CustomInstructionBuilder {
+    return this.newInstruction(payload);
   }
 
   /**
-   * Create an instruction that updates the program's lucky number.
-   * @param {Addressable} account - Account or public key of account.
+   * Replace on-chain value with a new value.
    * @param {UpdateLuckyNumber} data - instruction data
    * @return {CustomInstructionBuilder} - and Instruction builder instance.
    */
-  public updateLuckyNumber(
-    account: Addressable,
-    data: UpdateLuckyNumber,
-  ): CustomInstructionBuilder {
-    return this.newInstruction(data).withAccount(account, {isWritable: true});
+  public updateValue(data: NewValue): CustomInstructionBuilder {
+    return this.newInstruction(data);
   }
 }
 
@@ -62,7 +50,7 @@ class LuckyNumberProgram extends Program {
  * Client main function.
  */
 async function main() {
-  const program = new LuckyNumberProgram(
+  const program = new PdaProgram(
     `${PROJECT_PATH}/dist/program/base-keypair.json`,
     `${PROJECT_PATH}/dist/program/base.so`,
   );
@@ -77,7 +65,7 @@ async function main() {
   // transaction payer's public key.
   // const key = await program.deriveAddress(payer.publicKey, 'lucky_number');
   // eslint-disable-next-line no-unused-vars
-  const key = await program.deriveAddress(payer, 'lucky_number');
+  const [key, _nonce] = await program.deriveProgramAddress(['lucky_number']);
 
   // new lucky number between 0 .. 100
   const value = Math.round(100 * Math.random());
@@ -86,19 +74,11 @@ async function main() {
   const tx = Solana.transaction();
 
   if (await program.hasAccount(key)) {
-    console.log('updating lucky number...');
-    // if account exists, just update existing value,
-    // no need to create new account
-    tx.add(program.updateLuckyNumber(key, new UpdateLuckyNumber({value})));
+    console.log('updating on-chain value...');
+    tx.add(program.updateValue(new NewValue({value})));
   } else {
-    console.log('creating account and initializing lucky number...');
-    // create a lucky_number account for the payer
-    // and initialize a value.
-    const payload = new CreateLuckyNumber({value});
-    tx.add(
-      program.createAccountWithSeed(payer, 'lucky_number', key, payload),
-      program.initializeLuckyNumber(key, payload),
-    );
+    console.log('initializing PDA account and setting initial value...');
+    tx.add(program.initializeValue(new FirstValue({value})));
   }
   // execute transaction
   const signature = await tx.sign(payer).execute();

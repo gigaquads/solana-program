@@ -1,16 +1,13 @@
 import {Keypair, PublicKey} from '@solana/web3.js';
 
 import Account from './Account';
-import {
-  CustomInstructionBuilder,
-  SystemInstructionBuilder,
-} from './InstructionBuilder';
-import {Payload} from './payload';
+import {CustomInstructionBuilder, SystemInstructionBuilder} from './builders';
+import InstructionData from './InstructionData';
 import Solana from './Solana';
 import {
   // airdropFundsForAccount,
   ensureSolanaProgramIsDeployed,
-} from './util';
+} from '../util';
 
 /**
  * Client for a Solana blockchain program.
@@ -50,7 +47,7 @@ export default class Program {
    * @param {Solana} solana - Solana application object.
    * @return {Promise<Program>} - This program.
    */
-  async connect(): Promise<Program> {
+  async load(): Promise<Program> {
     this.programKeyPair = await ensureSolanaProgramIsDeployed(
       Solana.conn,
       this.programSoPath,
@@ -63,10 +60,12 @@ export default class Program {
    * Initialize a new Instruction. To execute the instruction on-chain (in a
    * transaction), use instr.execute().
    *
-   * @param {Payload?} data - Optional data to bind to instruction.
+   * @param {InstructionData?} data - Optional data to bind to instruction.
    * @return {InstructionBuilder} - An initialized Instruction.
    */
-  newInstruction(data: Payload | null = null): CustomInstructionBuilder {
+  newInstruction(
+    data: InstructionData | null = null,
+  ): CustomInstructionBuilder {
     const builder = new CustomInstructionBuilder(this);
     builder.data = data;
     return builder;
@@ -153,11 +152,11 @@ export default class Program {
     payer: Keypair,
     seed: string | Function,
     key: PublicKey | Function,
-    space: number | Payload,
+    space: number | InstructionData,
     lamports: number | null | Function = null,
   ): SystemInstructionBuilder {
     const resolvedSpace: number =
-      space instanceof Payload ? space.space : space;
+      space instanceof InstructionData ? space.space : space;
     const builder = new SystemInstructionBuilder();
     builder.createAccountWithSeed(
       this,
@@ -181,11 +180,11 @@ export default class Program {
   createAccount(
     payer: Keypair,
     key: PublicKey | Function,
-    space: number | Payload,
+    space: number | InstructionData,
     lamports: number | null | Function = null,
   ): SystemInstructionBuilder {
     const resolvedSpace: number =
-      space instanceof Payload ? space.space : space;
+      space instanceof InstructionData ? space.space : space;
     const builder = new SystemInstructionBuilder();
     builder.createAccount(this, payer, key, resolvedSpace, lamports);
     return builder;

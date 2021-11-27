@@ -6,9 +6,11 @@ import {
   SystemProgram,
   TransactionInstruction,
 } from '@solana/web3.js';
-import {isAsyncFunction} from './util';
-
-import {Account, Program, Payload, Solana} from '.';
+import Solana from '../Solana';
+import Account from '../Account';
+import Program from '../Program';
+import InstructionData from '../InstructionData';
+import {isAsyncFunction} from '../../util';
 
 /**
  * An Addressable type is one from which an account public key can be extracted.
@@ -164,13 +166,13 @@ export class SystemInstructionBuilder extends InstructionBuilder {
 export class CustomInstructionBuilder extends InstructionBuilder {
   public readonly program: Program;
   public accounts: Array<AccountMetadata> = [];
-  public data: Payload | null = null;
+  public data: InstructionData | null = null;
 
   /**
    * @param {Program} program - Program that owns the instruction.
-   * @param {Payload | null} data - Instruction data payload.
+   * @param {InstructionData | null} data - Instruction data payload.
    */
-  constructor(program: Program, data: Payload | null = null) {
+  constructor(program: Program, data: InstructionData | null = null) {
     super();
     this.program = program;
     this.data = data;
@@ -205,7 +207,7 @@ export class CustomInstructionBuilder extends InstructionBuilder {
    * @return {TransactionInstruction} - The generated TransactionInstruction.
    */
   public async build(): Promise<TransactionInstruction> {
-    // serialize Payload to buffer as instruction data
+    // serialize InstructionData to buffer as instruction data
     const data = this.data ? this.data!.toBuffer() : Buffer.alloc(0);
     // build up account metadata needed by solana SDK
     const keys = this.accounts.map((meta: AccountMetadata) => {

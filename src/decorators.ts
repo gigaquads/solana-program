@@ -1,3 +1,5 @@
+import 'reflect-metadata';
+
 /**
  * A decorator that registers a class as a Rust enum variant.
  *
@@ -5,7 +7,7 @@
  * which the variant belows.
  * @return {Function} - Constructor that stores variant index in class metadata.
  */
-export function variant(index: number) {
+export function variant(index: number): Function {
   return function (constructor: Function) {
     Reflect.defineMetadata('variant', index, constructor);
   };
@@ -19,7 +21,7 @@ export function variant(index: number) {
  * (de)serialize this field to/from.
  * @return {Function} - The modified property.
  */
-export function field(type: string | Array<string>) {
+export function field(type: string | Array<string>): Function {
   return function (target: {} | any, name: PropertyKey): any {
     let schema = Reflect.getMetadata('schema', target.constructor);
     if (!schema) {

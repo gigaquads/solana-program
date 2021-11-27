@@ -5,7 +5,7 @@ import {
   TransactionSignature,
 } from '@solana/web3.js';
 import InstructionBuilder from './InstructionBuilder';
-import Solana from './Solana';
+import Solana from '../Solana';
 
 /**
  * State enum for TransactionBuilder.

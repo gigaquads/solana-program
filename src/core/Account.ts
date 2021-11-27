@@ -1,5 +1,5 @@
 import {AccountInfo, PublicKey} from '@solana/web3.js';
-import {Payload} from './payload';
+import InstructionData from './InstructionData';
 import Program from './Program';
 
 /**
@@ -29,12 +29,12 @@ export default class Account {
   }
 
   /**
-   * Deserialize the account's data into the given Payload object, returning it.
+   * Deserialize the account's data into the given InstructionData object, returning it.
    *
-   * @param {T} message - A Payload subclass.
-   * @return {T} - A Payload instance containing the deserialized account data.
+   * @param {T} message - A InstructionData subclass.
+   * @return {T} - A InstructionData instance containing the deserialized account data.
    */
-  deserializeTo<T extends Payload>(message: T): T {
+  deserializeTo<T extends InstructionData>(message: T): T {
     message.fromBuffer(this.info.data);
     return message;
   }

@@ -1,11 +1,11 @@
 import {Connection, Keypair} from '@solana/web3.js';
-import TransactionBuilder from './TransactionBuilder';
+import {TransactionBuilder} from './builders';
 import {
   createKeypairFromFile,
   establishConnection,
   getConfig,
   getConfigKeypair,
-} from './util';
+} from '../util';
 
 /**
  * Solana CLI accessor helper class.

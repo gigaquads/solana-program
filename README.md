@@ -1,28 +1,24 @@
 # Solana Program
-Solana Program is a high-level client for interacting with on-chain Solana
-programs from typescript.
+This library builds upon @solana/web3.js with slightly higher-level abstractions
+and syntactic sugar for interacting with Solana programs. It strives to make it
+easy to reason about what's actually going on by not inventing new names or
+burying web3.js under multiple layers of framework code.
 
 ## Installing
 Just run `yarn add solana-program` (or `npm install...`).
 
 ## Basic Example
-Here's an example where we connect to an on-chain prorgam that simply stores a
-"lucky number" in an account. If the account doesn't already exist, we create
-it. Finally, we retreived the updated lucky number and log it.
+This is a complete example of building a client for a Solana program that simply
+initializes and sets a "lucky number" in an account.
 
 ```typescript
-/**
- * Define instruction payload for setting lucky number.
- */
 @variant(0)
-class SetLuckyNumber extends Payload {
+class SetLuckyNumber extends InstructionData {
   @field('u8')
   value?: number;
 }
 
-/**
- * Define program client with method for "set lucky number" instruction.
- */
+
 class LuckyNumberProgram extends Program {
   public setLuckyNumber(
     account: Addressable, data: SetLuckyNumber,
@@ -33,13 +29,11 @@ class LuckyNumberProgram extends Program {
   }
 }
 
-/**
- * Create or update on-chain lucky number.
- */
+
 async function main() {
   await Solana.initialize()
 
-  const program = new LuckyNumberProgram(keypairPath, soPath);
+  const program = new LuckyNumberProgram(programKeypairPath, soPath);
   const payer = Solana.cli.keyPair;
 
   await program.connect();
@@ -48,28 +42,25 @@ async function main() {
   const key = await program.deriveAddress(payer.publicKey, 'lucky_number');
 
   // new lucky number between 0 .. 100
-  const payload = new SetLuckyNumber({
-    value: Math.round(100 * Math.random())
-  })
-  // init, build and execute transaction
+  const payload = new SetLuckyNumber({value: Math.round(100 * Math.random())});
+
+  // get existing account if exists
+  const account = await program.hasAccount(key);
+
+  // init a TransactionBuilder for preparing new transaction
   const tx = Solana.transaction();
 
-  // create or update lucky number account on-chain
-  if (!(await program.hasAccount(key))) {
+  // create lucky number account if does not exist
+  if (account === null) {
+    console.log('creating "lucky number" account');
     tx.add(program.createAccount(payer, 'lucky_number', payload));
   }
+  // upsert new lucky number
+  console.log('setting new "lucky number"');
   tx.add(program.setLuckyNumber(key, value));
 
   // sign & execute transaction
   const signature = await tx.sign(payer).execute();
-  console.log('executed transaction signature', signature);
+  console.log('transaction executed' {signature});
 }
-```
-
-## Background & Motivation
-The first iteration of this library was based on the official "Hello, world!"
-example. Unfortunately, at the time of writing, neither the official example nor
-others out there on the web offered any insight into how real world programs
-should be designed or structured. This library aims to be a middle ground
-between raw web3 and anchor.
 ```
