@@ -60,6 +60,6 @@ async function main() {
 
   // sign & execute transaction
   const signature = await tx.sign(payer).execute();
-  console.log('transaction executed' {signature});
+  console.log('transaction signature:', signature);
 }
 ```
