@@ -5,7 +5,7 @@ import Program from '../core/Program';
 import Account from '../core/Account';
 import { CustomInstructionBuilder } from '../core/builders';
 import { Keypair, PublicKey } from '@solana/web3.js';
-import { loadKeypair } from './util';
+import { loadKeypair } from '../cli';
 
 /**
  * Data structure for "create lucky number" instruction.
