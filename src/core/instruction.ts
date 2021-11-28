@@ -11,7 +11,7 @@ import Solana from './Solana';
  */
 export function tag(index: number): Function {
   return function (constructor: Function) {
-    Reflect.defineMetadata('variant', index, constructor);
+    Reflect.defineMetadata('tag', index, constructor);
   };
 }
 
@@ -64,12 +64,12 @@ export class InstructionData {
    * Rust enum. If this class corresponds to the second enum variant, for
    * example, then we'd expect index == 1.
    */
-  public get variant(): number {
+  public get tag(): number {
     return Reflect.getMetadata('variant', this.constructor);
   }
 
   /**
-   * @return {any} - The borsh schema object built up via `variant` and `field`
+   * @return {any} - The borsh schema object built up via `tag` and `field`
    * decorators.
    */
   public get schema(): any {
@@ -97,7 +97,7 @@ export class InstructionData {
     const cls: any = this.constructor;
     const schema = new Map([[cls, this.schema]]);
     const bytes = borsh.serialize(schema, this);
-    return Buffer.from(Uint8Array.of(this.variant, ...bytes));
+    return Buffer.from(Uint8Array.of(this.tag, ...bytes));
   }
 
   /**

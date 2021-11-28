@@ -12,7 +12,7 @@ This is a complete example of building a client for a Solana program that simply
 initializes and sets a "lucky number" in an account.
 
 ```typescript
-@variant(0)
+@tag(0)
 class SetLuckyNumber extends InstructionData {
   @field('u8')
   value?: number;
