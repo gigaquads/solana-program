@@ -44,7 +44,7 @@ async function main() {
   const data = new SetLuckyNumber({value: Math.round(100 * Math.random())});
 
   // get existing account, if exists
-  const account = await program.hasAccount(key);
+  const account = await program.getAccount(key);
 
   // start building a new transaction
   const tx = Solana.begin();
