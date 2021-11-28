@@ -9,8 +9,7 @@ import {
 import Solana from '../Solana';
 import Account from '../Account';
 import Program from '../Program';
-import InstructionData from '../InstructionData';
-import {isAsyncFunction} from '../../util';
+import { InstructionData } from '../instruction';
 
 /**
  * An Addressable type is one from which an account public key can be extracted.
@@ -49,13 +48,13 @@ export class SystemInstructionBuilder extends InstructionBuilder {
    */
   public async build(): Promise<TransactionInstruction> {
     // build up computed params object
-    const params: {[index: string]: any} = {};
+    const params: { [index: string]: any } = {};
     for (const [k, v] of Object.entries(this.params)) {
       if (typeof v === 'function') {
         // await the return value of the function
         // if is async function.
         const x = v();
-        if (isAsyncFunction(x)) {
+        if (this.isAsyncFunction(x)) {
           params[k] = await x;
         } else {
           params[k] = x;
@@ -65,6 +64,17 @@ export class SystemInstructionBuilder extends InstructionBuilder {
       }
     }
     return this.systemInstructionFactory!(params);
+  }
+
+  /**
+   * Determine if a given object is an async function.
+   * @param {any} x - Any object.
+   * @return {boolean} - True, if object is an async function.
+   */
+  private isAsyncFunction(x: any): boolean {
+    return (
+      x && typeof x.then === 'function' && x[Symbol.toStringTag] === 'Promise'
+    );
   }
 
   /**
@@ -187,7 +197,7 @@ export class CustomInstructionBuilder extends InstructionBuilder {
    */
   public withAccount(
     account: Addressable,
-    options: AccountMetadataOptions = {isSigner: false, isWritable: false},
+    options: AccountMetadataOptions = { isSigner: false, isWritable: false },
   ): CustomInstructionBuilder {
     // just add the account metadata to array
     this.accounts.push(

@@ -11,7 +11,7 @@ import Solana from '../Solana';
  * State enum for TransactionBuilder.
  */
 // eslint-disable-next-line no-unused-vars
-enum TransactionState {
+export enum TransactionState {
   // eslint-disable-next-line no-unused-vars
   Created = 1,
   // eslint-disable-next-line no-unused-vars
@@ -41,8 +41,7 @@ export default class TransactionBuilder {
 
   /**
    * Add one of more instruction builders.
-   * @param {Array<InstructionBuilder>}
-   * builders - one or more InstructionBuilders.
+   * @param {Array<InstructionBuilder>} builders - one or more InstructionBuilders.
    * @return {TransactionBuilder} - This builder.
    */
   public add(...builders: Array<InstructionBuilder>): TransactionBuilder {
@@ -52,8 +51,8 @@ export default class TransactionBuilder {
 
   /**
    * Add one of more keypairs as signers of the transaction.
-   * @param {Array<Keypair>} signers - one or more keypairs
-   * that sign the transaction.
+   * @param {Array<Keypair>} signers - one or more keypairs that sign the
+   * transaction.
    * @return {TransactionBuilder} - This builder.
    */
   public sign(...signers: Array<Keypair>): TransactionBuilder {
@@ -115,7 +114,6 @@ export default class TransactionBuilder {
       const instr = await b.build();
       tx.add(instr);
     }
-
     // try to execute and confirm transaction,
     // updating TransactionState accordingly.
     try {

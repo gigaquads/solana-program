@@ -1,59 +1,41 @@
-import {Keypair, PublicKey} from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 
 import Account from './Account';
-import {CustomInstructionBuilder, SystemInstructionBuilder} from './builders';
-import InstructionData from './InstructionData';
+import { CustomInstructionBuilder, SystemInstructionBuilder } from './builders';
+import { InstructionData } from './instruction';
 import Solana from './Solana';
-import {
-  // airdropFundsForAccount,
-  ensureSolanaProgramIsDeployed,
-} from '../util';
 
 /**
  * Client for a Solana blockchain program.
  */
 export default class Program {
-  public readonly programKeypairPath: string;
-  public readonly programSoPath: string;
-  private programKeyPair: Keypair | null = null;
-
-  /**
-   * Solana program ID or undefined if client not initialized.
-   */
-  get keyPair(): Keypair {
-    return this.programKeyPair!;
-  }
+  private programId: PublicKey | null = null;
 
   /**
    * Solana program ID or undefined if client not initialized.
    */
   get id(): PublicKey {
-    return this.programKeyPair!.publicKey;
+    return this.programId!;
   }
 
   /**
-   *
-   * @param {string} programKeypairPath - Path to program keypair file.
-   * @param {string} programSoPath - Path to Solana .so program file.
+   * @param {string | PublicKey} id - Program ID (its account's public).
    */
-  constructor(programKeypairPath: string, programSoPath: string) {
-    this.programSoPath = programSoPath;
-    this.programKeypairPath = programKeypairPath;
+  constructor(id: string | PublicKey) {
+    if (id instanceof PublicKey) {
+      this.programId = id;
+    } else {
+      this.programId = new PublicKey(id);
+    }
   }
 
   /**
-   * Initialize the web3 connection for communicating with the Solana program,
-   * ensuring that the program is deployed and its account is executable.
-   * @param {Solana} solana - Solana application object.
-   * @return {Promise<Program>} - This program.
+   * Return true if this program is deployed to Solana (using its program ID).
+   * @return {boolean} - True, if on-chain program is deployed.
    */
-  async load(): Promise<Program> {
-    this.programKeyPair = await ensureSolanaProgramIsDeployed(
-      Solana.conn,
-      this.programSoPath,
-      this.programKeypairPath,
-    );
-    return this;
+  public async isDeployed(): Promise<boolean> {
+    const programInfo = await Solana.conn.getAccountInfo(this.id);
+    return programInfo !== null;
   }
 
   /**
@@ -63,7 +45,7 @@ export default class Program {
    * @param {InstructionData?} data - Optional data to bind to instruction.
    * @return {InstructionBuilder} - An initialized Instruction.
    */
-  newInstruction(
+  public newInstruction(
     data: InstructionData | null = null,
   ): CustomInstructionBuilder {
     const builder = new CustomInstructionBuilder(this);
@@ -81,7 +63,7 @@ export default class Program {
    * generating new public key.
    * @return {PublicKey} - Generated public key.
    */
-  async deriveAddress(
+  public async deriveAddress(
     fromKey: PublicKey | Keypair,
     seed: string,
   ): Promise<PublicKey> {
@@ -101,7 +83,7 @@ export default class Program {
    * to derive new address.
    * @return {Promise<[PublicKey, number]>} - Derived address & nonce.
    */
-  async deriveProgramAddress(
+  public async findProgramAddress(
     seeds: string | Buffer | Array<string | Buffer>,
   ): Promise<[PublicKey, number]> {
     // convert seeds arg to list of buffers
@@ -114,20 +96,13 @@ export default class Program {
   }
 
   /**
-   * Return a new Account object, containing AccountInfo owned and fetched by
-   * this program.
-   *
-   * @param {string} key - prorgam-derived address
-   * of account being fetched.
-   * @return {Promise<Account>} - An Account object with fetched AccountInfo as
-   * its `info` property.
+   * Return a new Account, containing AccountInfo in this.info.
+   * @param {string | PublicKey} key - Address of account info to fetch.
+   * @return {Promise<Account>} - Fetched Account.
    */
-  async getAccount(key: PublicKey): Promise<Account | null> {
+  public async getAccount(key: PublicKey): Promise<Account | null> {
     const info = await Solana.conn.getAccountInfo(key);
-    if (!info) {
-      return null;
-    }
-    return new Account(this, key, info!);
+    return info ? new Account(this, key, info!) : null;
   }
 
   /**
@@ -135,7 +110,7 @@ export default class Program {
    * @param {PublicKey} key - program-derived account address.
    * @return {boolean} True, if account is found.
    */
-  async hasAccount(key: PublicKey): Promise<boolean> {
+  public async hasAccount(key: PublicKey): Promise<boolean> {
     return (await Solana.conn.getAccountInfo(key)) !== null;
   }
 
@@ -148,7 +123,7 @@ export default class Program {
    * @param {number | null} lamports - amount of funds to allocate.
    * @return {SystemInstructionBuilder} - an instruction builder.
    */
-  createAccountWithSeed(
+  public createAccountWithSeed(
     payer: Keypair,
     seed: string | Function,
     key: PublicKey | Function,
@@ -156,7 +131,7 @@ export default class Program {
     lamports: number | null | Function = null,
   ): SystemInstructionBuilder {
     const resolvedSpace: number =
-      space instanceof InstructionData ? space.space : space;
+      space instanceof InstructionData ? space.measure() : space;
     const builder = new SystemInstructionBuilder();
     builder.createAccountWithSeed(
       this,
@@ -177,14 +152,14 @@ export default class Program {
    * @param {number | null} lamports - amount of funds to allocate.
    * @return {SystemInstructionBuilder} - an instruction builder.
    */
-  createAccount(
+  public createAccount(
     payer: Keypair,
     key: PublicKey | Function,
     space: number | InstructionData,
     lamports: number | null | Function = null,
   ): SystemInstructionBuilder {
     const resolvedSpace: number =
-      space instanceof InstructionData ? space.space : space;
+      space instanceof InstructionData ? space.measure() : space;
     const builder = new SystemInstructionBuilder();
     builder.createAccount(this, payer, key, resolvedSpace, lamports);
     return builder;

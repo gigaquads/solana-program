@@ -1,5 +1,5 @@
-import {AccountInfo, PublicKey} from '@solana/web3.js';
-import InstructionData from './InstructionData';
+import { AccountInfo, PublicKey } from '@solana/web3.js';
+import { InstructionData } from './instruction';
 import Program from './Program';
 
 /**
@@ -34,7 +34,7 @@ export default class Account {
    * @param {T} message - A InstructionData subclass.
    * @return {T} - A InstructionData instance containing the deserialized account data.
    */
-  deserializeTo<T extends InstructionData>(message: T): T {
+  public deserializeTo<T extends InstructionData>(message: T): T {
     message.fromBuffer(this.info.data);
     return message;
   }

@@ -33,27 +33,26 @@ class LuckyNumberProgram extends Program {
 async function main() {
   await Solana.initialize()
 
-  const program = new LuckyNumberProgram(programKeypairPath, soPath);
-  const payer = Solana.cli.keyPair;
+  const programKeypair = await loadKeypair(PROGRAM_KEYPAIR_PATH);
+  const program = new LuckyNumberProgram(programKeypair.publicKey);
+  const payer = await loadKeypair(PAYER_KEYPAIR_PATH);
 
-  await program.connect();
-
-  // compute user-space address for new account
+  // compute public key address of program's "lucky number" account
   const key = await program.deriveAddress(payer.publicKey, 'lucky_number');
 
-  // new lucky number between 0 .. 100
-  const payload = new SetLuckyNumber({value: Math.round(100 * Math.random())});
+  // randomly select new lucky number between 0 .. 100
+  const data = new SetLuckyNumber({value: Math.round(100 * Math.random())});
 
-  // get existing account if exists
+  // get existing account, if exists
   const account = await program.hasAccount(key);
 
-  // init a TransactionBuilder for preparing new transaction
-  const tx = Solana.transaction();
+  // start building a new transaction
+  const tx = Solana.begin();
 
   // create lucky number account if does not exist
   if (account === null) {
     console.log('creating "lucky number" account');
-    tx.add(program.createAccount(payer, 'lucky_number', payload));
+    tx.add(program.createAccount(payer, 'lucky_number', data));
   }
   // upsert new lucky number
   console.log('setting new "lucky number"');
