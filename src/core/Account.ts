@@ -1,41 +1,34 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
-import { InstructionData } from './instruction';
-import Program from './Program';
+import ProgramObject from './ProgramObject';
+console.log('ProgramObject', ProgramObject);
 
+export interface AccountInterface {
+  key: PublicKey | null;
+}
 /**
  * High-level abstraction that encapsulates an AccountInfo as well as its public
  * key address and the owner Program object through that owns the account.
  */
-export default class Account {
-  readonly key: PublicKey;
 
-  readonly info: AccountInfo<Buffer>;
-
-  owner: Program;
+export default class Account<T extends ProgramObject>
+  implements AccountInterface
+{
+  public key: PublicKey | null = null;
+  public info: AccountInfo<Buffer> | null = null;
+  public data: T | null = null;
 
   /**
    * Return a new Account. Accounts are normally only instantiated within a
    * Program object's instance methods.
    *
-   * @param {Program} owner - Program that owns the account.
-   * @param {PublicKey} key  - Public key of the account (AKA its address).
-   * @param {AccountInfo<Buffer>} info - Solana SDK AccountInfo object,
-   * containing account data, etc.
    */
-  constructor(owner: Program, key: PublicKey, info: AccountInfo<Buffer>) {
+  constructor(
+    key: PublicKey,
+    info: AccountInfo<Buffer>,
+    data: T | null = null,
+  ) {
     this.key = key;
-    this.owner = owner;
     this.info = info;
-  }
-
-  /**
-   * Deserialize the account's data into the given InstructionData object, returning it.
-   *
-   * @param {T} message - A InstructionData subclass.
-   * @return {T} - A InstructionData instance containing the deserialized account data.
-   */
-  public deserializeTo<T extends InstructionData>(message: T): T {
-    message.fromBuffer(this.info.data);
-    return message;
+    this.data = data;
   }
 }

@@ -1,5 +1,5 @@
 import { Keypair } from '@solana/web3.js';
-import fs from 'mz/fs';
+import fs from 'fs';
 
 /**
  * Load a Keypair from file.
@@ -7,7 +7,7 @@ import fs from 'mz/fs';
  * @return {Promise<Keypair>} - Keypair
  */
 export async function loadKeypair(path: string): Promise<Keypair> {
-  const secretKeyString = await fs.readFile(path, { encoding: 'utf8' });
+  const secretKeyString = await fs.promises.readFile(path, 'utf8');
   const secretKey = Uint8Array.from(JSON.parse(secretKeyString));
   return Keypair.fromSecretKey(secretKey);
 }

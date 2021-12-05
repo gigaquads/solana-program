@@ -21,7 +21,7 @@ class SetLuckyNumber extends InstructionData {
 
 class LuckyNumberProgram extends Program {
   public setLuckyNumber(
-    account: Addressable, data: SetLuckyNumber,
+    account: PublicKey | Account, data: SetLuckyNumber,
   ): CustomInstructionBuilder {
     return this
       .newInstruction(data)

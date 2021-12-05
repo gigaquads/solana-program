@@ -1,15 +1,18 @@
 import 'reflect-metadata';
 
 export { default as Solana } from './core/Solana';
-export { InstructionData, tag, field } from './core/instruction';
+export { default as InstructionData } from './core/InstructionData';
+export { default as ProgramObject } from './core/ProgramObject';
 export { default as Program } from './core/Program';
-export { default as Account } from './core/Account';
-export { loadKeypair } from './cli';
+export { AccountInterface, default as Account } from './core/Account';
+export * as constants from './core/constants';
 export {
   TransactionBuilder,
   TransactionState,
   InstructionBuilder,
   CustomInstructionBuilder,
   SystemInstructionBuilder,
-  Addressable,
 } from './core/builders';
+
+export { tag, field } from './core/util';
+export { loadKeypair } from './cli';

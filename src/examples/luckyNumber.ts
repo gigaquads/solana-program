@@ -1,8 +1,9 @@
 import 'reflect-metadata';
-import { InstructionData, tag, field } from '../core/instruction';
+import InstructionData from '../core/InstructionData';
+import { tag, field } from '../core/util';
 import Solana from '../core/Solana';
 import Program from '../core/Program';
-import Account from '../core/Account';
+import { AccountInterface } from '../core/Account';
 import { CustomInstructionBuilder } from '../core/builders';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { loadKeypair } from '../cli';
@@ -31,12 +32,12 @@ class UpdateLuckyNumber extends InstructionData {
 class LuckyNumberProgram extends Program {
   /**
    * Create an instruction that updates the program's lucky number.
-   * @param {Account | PublicKey} account - Account or public key of account.
+   * @param {AccountInterface | PublicKey} account - Account or public key of account.
    * @param {CreateLuckyNumber} data - instruction data
    * @return {CustomInstructionBuilder} - and Instruction builder instance.
    */
   public initializeLuckyNumber(
-    account: Account | PublicKey,
+    account: AccountInterface | PublicKey,
     data: CreateLuckyNumber,
   ): CustomInstructionBuilder {
     return this.newInstruction(data).withAccount(account, { isWritable: true });
@@ -44,12 +45,12 @@ class LuckyNumberProgram extends Program {
 
   /**
    * Create an instruction that updates the program's lucky number.
-   * @param {Account | PublicKey} account - Account or public key of account.
+   * @param {AccountInterface | PublicKey} account - Account or public key of account.
    * @param {UpdateLuckyNumber} data - instruction data
    * @return {CustomInstructionBuilder} - and Instruction builder instance.
    */
   public updateLuckyNumber(
-    account: Account | PublicKey,
+    account: AccountInterface | PublicKey,
     data: UpdateLuckyNumber,
   ): CustomInstructionBuilder {
     return this.newInstruction(data).withAccount(account, { isWritable: true });

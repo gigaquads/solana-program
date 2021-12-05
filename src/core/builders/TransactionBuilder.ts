@@ -40,12 +40,25 @@ export default class TransactionBuilder {
   }
 
   /**
-   * Add one of more instruction builders.
-   * @param {Array<InstructionBuilder>} builders - one or more InstructionBuilders.
+   * Add one of more instruction builders (or arrays thereof).
+   * @param {Array<InstructionBuilder | Array<InstructionBuilder>} builders -
+   * one or more InstructionBuilders.
    * @return {TransactionBuilder} - This builder.
    */
-  public add(...builders: Array<InstructionBuilder>): TransactionBuilder {
-    builders.forEach((b) => this.instructionBuilders.push(b));
+  public add(
+    ...builders: Array<InstructionBuilder | Array<InstructionBuilder>>
+  ): TransactionBuilder {
+    // builders array consists of both individual InstructionBuilders and arrays
+    // thereof. Therefore, we effectively flatten the array below, adding each
+    // builder and nested builder.
+    builders.forEach((obj) => {
+      if (obj instanceof InstructionBuilder) {
+        this.instructionBuilders.push(obj);
+      } else {
+        // assume it's an array of builders
+        obj.forEach((b) => this.instructionBuilders.push(b));
+      }
+    });
     return this;
   }
 

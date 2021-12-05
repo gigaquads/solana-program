@@ -1,14 +1,18 @@
 import { Keypair, PublicKey } from '@solana/web3.js';
+import { ProgramObject } from '..';
 
-import Account from './Account';
+import Account, { AccountInterface } from './Account';
 import { CustomInstructionBuilder, SystemInstructionBuilder } from './builders';
-import { InstructionData } from './instruction';
+import { SYSTEM_PROGRAM_PUBKEY } from './constants';
+import InstructionData from './InstructionData';
 import Solana from './Solana';
 
 /**
  * Client for a Solana blockchain program.
  */
 export default class Program {
+  public static SYSTEM_PROGRAM_PUBKEY = SYSTEM_PROGRAM_PUBKEY;
+
   private programId: PublicKey | null = null;
 
   /**
@@ -79,12 +83,12 @@ export default class Program {
    * where the user and the program are effectively "co-signers" of the account.
    * The resulting public key is not actually a public key, as there is no
    * corresponding private key.
-   * @param {string | Buffer | Array<string | Buffer>} seeds - seed values, used
+   * @param {string | Buffer | Uint8Array | Array<string | Buffer | Uint8Array>} seeds - seed values, used
    * to derive new address.
    * @return {Promise<[PublicKey, number]>} - Derived address & nonce.
    */
-  public async findProgramAddress(
-    seeds: string | Buffer | Array<string | Buffer>,
+  public async findAddress(
+    seeds: string | Buffer | Uint8Array | Array<string | Buffer | Uint8Array>,
   ): Promise<[PublicKey, number]> {
     // convert seeds arg to list of buffers
     seeds = seeds instanceof Array ? seeds : [seeds];
@@ -100,9 +104,19 @@ export default class Program {
    * @param {string | PublicKey} key - Address of account info to fetch.
    * @return {Promise<Account>} - Fetched Account.
    */
-  public async getAccount(key: PublicKey): Promise<Account | null> {
+  public async getAccount<T extends ProgramObject>(
+    // eslint-disable-next-line no-unused-vars
+    programObjectType: { new (data: any): T },
+    key: PublicKey,
+  ): Promise<Account<T> | null> {
     const info = await Solana.conn.getAccountInfo(key);
-    return info ? new Account(this, key, info!) : null;
+
+    if (info !== null) {
+      // const trimmedData = Buffer.from(data.toString().replace(/\0+$/, ''));
+      const data = new programObjectType(info.data);
+      return new Account<T>(key, info, data);
+    }
+    return null;
   }
 
   /**
@@ -163,5 +177,23 @@ export default class Program {
     const builder = new SystemInstructionBuilder();
     builder.createAccount(this, payer, key, resolvedSpace, lamports);
     return builder;
+  }
+
+  /**
+   *
+   * @param {Keypair | PublicKey} user - Public key or keypair of payer.
+   * @param {PublicKey} pda - a PDA generated via findProgramAddress
+   * @param {Echo} data - instruction data.
+   */
+  public createAccountWithPda<T extends InstructionData>(
+    user: Keypair | PublicKey | AccountInterface,
+    pda: PublicKey,
+    data: T,
+  ): CustomInstructionBuilder {
+    user = user instanceof Keypair ? user.publicKey : user;
+    return this.newInstruction(data)
+      .withAccount(user, { isSigner: true, isWritable: true })
+      .withAccount(SYSTEM_PROGRAM_PUBKEY)
+      .withAccount(pda, { isWritable: true });
   }
 }

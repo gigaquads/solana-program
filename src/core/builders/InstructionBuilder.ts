@@ -7,14 +7,9 @@ import {
   TransactionInstruction,
 } from '@solana/web3.js';
 import Solana from '../Solana';
-import Account from '../Account';
+import { AccountInterface } from '../Account';
 import Program from '../Program';
-import { InstructionData } from '../instruction';
-
-/**
- * An Addressable type is one from which an account public key can be extracted.
- */
-export type Addressable = PublicKey | Account;
+import InstructionData from '../InstructionData';
 
 export type AccountMetadataOptions = {
   /** true if instruction requires transaction signature matching `pubkey` */
@@ -191,18 +186,29 @@ export class CustomInstructionBuilder extends InstructionBuilder {
   /**
    * This method is used to register an account with the instruction, indicating
    * that the instruction reads or writes to it.
-   * @param {Account} account - Account targeted by instruction.
+   * @param {AccountInterface} account - Account targeted by instruction.
    * @param {any} options - Account metadata fields.
    * @return {InstructionBuilder} - returns this instruction.
    */
   public withAccount(
-    account: Addressable,
+    account: Keypair | PublicKey | AccountInterface,
     options: AccountMetadataOptions = { isSigner: false, isWritable: false },
   ): CustomInstructionBuilder {
     // just add the account metadata to array
+    let key;
+    if (account instanceof Keypair) {
+      key = account.publicKey;
+    } else if (account instanceof PublicKey) {
+      key = account;
+    } else {
+      if (account.key === null) {
+        throw Error('cannot add account with no public key to instruction');
+      }
+      key = account.key;
+    }
     this.accounts.push(
       new AccountMetadata(
-        account instanceof Account ? account.key : account,
+        key,
         options.isSigner || false,
         options.isWritable || false,
       ),
