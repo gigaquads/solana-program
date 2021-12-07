@@ -89,7 +89,6 @@ export default class ProgramObject {
         if (raw[k] !== undefined) {
           // apply adaptor to raw deserialized field data
           if (adaptors && adaptors[k]) {
-            console.log(k, adaptors[k], raw[k]);
             this[k] = adaptors[k].onDeserialize(raw[k]);
           } else {
             this[k] = raw[k];
