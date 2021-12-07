@@ -14,5 +14,5 @@ export {
   SystemInstructionBuilder,
 } from './core/builders';
 
-export { tag, field } from './core/util';
+export { FieldAdaptor, tag, field } from './core/util';
 export { loadKeypair } from './cli';

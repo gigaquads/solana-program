@@ -1,11 +1,10 @@
 # Solana Program
-This library builds upon @solana/web3.js with slightly higher-level abstractions
-and syntactic sugar for interacting with Solana programs. It strives to make it
-easy to reason about what's actually going on by not inventing new names or
-burying web3.js under multiple layers of framework code.
+This library builds upon @solana/web3.js with slightly higher-level yet shallow
+abstractions and interacting with Solana programs that is more natural to read
+than raw web3.js code.
 
 ## Installing
-Just run `yarn add solana-program` (or `npm install...`).
+Just run `yarn add solana-program` or `npm install solana-program`.
 
 ## Basic Example
 This is a complete example of building a client for a Solana program that simply
@@ -30,15 +29,11 @@ class LuckyNumberProgram extends Program {
 }
 
 
-async function main() {
+async function main(user: Keypair, program: LuckyNumberProgram) {
   await Solana.initialize()
 
-  const programKeypair = await loadKeypair(PROGRAM_KEYPAIR_PATH);
-  const program = new LuckyNumberProgram(programKeypair.publicKey);
-  const payer = await loadKeypair(PAYER_KEYPAIR_PATH);
-
   // compute public key address of program's "lucky number" account
-  const key = await program.deriveAddress(payer.publicKey, 'lucky_number');
+  const key = await program.deriveAddress(user.publicKey, 'lucky_number');
 
   // randomly select new lucky number between 0 .. 100
   const data = new SetLuckyNumber({value: Math.round(100 * Math.random())});
@@ -52,14 +47,14 @@ async function main() {
   // create lucky number account if does not exist
   if (account === null) {
     console.log('creating "lucky number" account');
-    tx.add(program.createAccount(payer, 'lucky_number', data));
+    tx.add(program.createAccountWithSeed(user, 'lucky_number', key, data));
   }
   // upsert new lucky number
   console.log('setting new "lucky number"');
-  tx.add(program.setLuckyNumber(key, value));
+  tx.add(program.setLuckyNumber(key, data));
 
   // sign & execute transaction
-  const signature = await tx.sign(payer).execute();
+  const signature = await tx.sign(user).execute();
   console.log('transaction signature:', signature);
 }
 ```

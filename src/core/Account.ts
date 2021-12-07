@@ -1,6 +1,5 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import ProgramObject from './ProgramObject';
-console.log('ProgramObject', ProgramObject);
 
 export interface AccountInterface {
   key: PublicKey | null;

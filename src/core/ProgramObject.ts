@@ -52,14 +52,14 @@ export default class ProgramObject {
     // serialize this ProgramObject to byte buffer via Borsh.
     let bytes;
     const adaptors = Reflect.getMetadata('adaptors', this.constructor);
-    if (adaptors) {
+    if (adaptors && Object.keys(adaptors).length > 0) {
       // apply any field value adaptors. an adaptor is a function that takes the
       // native JS property value and returns the data in a form Borsh can
       // understand, like converting a PublicKey object into a Uint8Array.
       const data: { [k: string]: any } = {};
       this.schema.fields.forEach((fieldArr: [string, any]) => {
         const k = fieldArr[0];
-        const adapt = adaptors[k];
+        const adapt = adaptors[k].onSerialize;
         data[k] = adapt ? adapt(this[k]) : this[k];
       });
       bytes = borsh.serialize(schema, data);
@@ -76,11 +76,24 @@ export default class ProgramObject {
   public load(data: Buffer): void {
     const Cls: any = this.constructor;
     const schema = new Map([[Cls, this.schema]]);
-    const raw = new Cls(borsh.deserializeUnchecked(schema, Cls, data));
+    const raw: { [k: string]: any } = borsh.deserializeUnchecked(
+      schema,
+      Cls,
+      data,
+    );
     if (raw) {
+      // get adaptors for custom post-processing of field data
+      const adaptors =
+        Reflect.getMetadata('adaptors', this.constructor) || null;
       Object.keys(raw).forEach((k: string) => {
         if (raw[k] !== undefined) {
-          this[k] = raw[k];
+          // apply adaptor to raw deserialized field data
+          if (adaptors && adaptors[k]) {
+            console.log(k, adaptors[k], raw[k]);
+            this[k] = adaptors[k].onDeserialize(raw[k]);
+          } else {
+            this[k] = raw[k];
+          }
         }
       });
     }
