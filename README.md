@@ -131,10 +131,10 @@ class LuckyNumberProgram extends Program {
   public setLuckyNumber(
     user: Address, key: Address, value: number,
   ): CustomInstructionBuilder {
-    return this
-      .instruction(new LuckyNumber({ value })
+    return this.instruction()
       .account(user, { isWritable: true, });
       .account(key, { isWritable: true, });
+      .data(new LuckyNumber({ value }))
   }
 }
 

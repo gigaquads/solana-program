@@ -172,7 +172,7 @@ export class SystemInstructionBuilder extends InstructionBuilder {
 export class CustomInstructionBuilder extends InstructionBuilder {
   public readonly program: Program;
   public accounts: Array<AccountMetadata> = [];
-  public data: ProgramObject | null = null;
+  private dataObject: ProgramObject | null = null;
   private instructionTag: number = 0;
 
   /**
@@ -182,7 +182,7 @@ export class CustomInstructionBuilder extends InstructionBuilder {
   constructor(program: Program, data: ProgramObject | null = null) {
     super();
     this.program = program;
-    this.data = data;
+    this.dataObject = data;
   }
 
   /**
@@ -208,6 +208,24 @@ export class CustomInstructionBuilder extends InstructionBuilder {
     return this;
   }
 
+  /**
+   * Set the instruction data.
+   * @param {T} obj - a ProgramObject to send as instruction data.
+   * @return {CustomInstructionBuilder} - This CustomInstructionbuilder.
+   */
+  public data<T extends ProgramObject>(obj: T): CustomInstructionBuilder {
+    this.dataObject = obj;
+    return this;
+  }
+
+  /**
+   * Set the instruction integer tag. Value must range in [0, 255]. This value
+   * is sent as the first byte of instruction data and is intended to be used to
+   * route the instruction to the appropriate backend handler.
+   * @param {number} tag - Integer identifier of the instruction, to be routed
+   * in backend program.
+   * @return {CustomInstructionBuilder} - This CustomInstructionbuilder.
+   */
   public tag(tag: number): CustomInstructionBuilder {
     if (tag < 0 || tag > 255) {
       throw Error(`instruction tag must be in range [0, 255]. got ${tag}`);
@@ -227,10 +245,10 @@ export class CustomInstructionBuilder extends InstructionBuilder {
       throw Error('cannot send instruction without a tag');
     }
     // serialize ProgramObject to buffer as instruction data
-    const data = this.data
+    const data = this.dataObject
       ? Buffer.concat([
           Buffer.from([this.instructionTag]),
-          this.data!.toBuffer(),
+          this.dataObject!.toBuffer(),
         ])
       : Buffer.from([this.instructionTag]);
     // build up account metadata needed by solana SDK
