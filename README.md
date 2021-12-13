@@ -20,7 +20,7 @@ const instr = program
   .data(data);
 ```
 
-You can add one or more `InstructionBuilder` objects to a transaction, using the
+You can add one or more `InstructionBuilder` objects to a transaction, using
 `TransactionBuilder`, like so:
 
 ```typescript
@@ -32,18 +32,22 @@ const signature = trans.execute();
 
 ### Querying in `@solana/web3.js`
 
-In order to retrieve a program's accounts using just `@solana/web3.js`, you
-normally use some form of `getProgramAccounts`. Queries can be filtered
-according to (1) the total size of the target account's data and (2) the
-contents of specific bytes contained therein. This often looks like:
+In order to retrieve a program's accounts using `@solana/web3.js`, you
+normally have to use some form of `getProgramAccounts`. Queries can be filtered
+according to two main criteria:
+
+1. Total size of the target account's data.
+2. Contents of specific slices of data.
+
+It looks something like this:
 
 ```typescript
+// assuming we have a type of account storing user "comments," here we are
+// matching accounts against a "tag" int, signifying account "type", and a
+// username string.
 const results = await getProgramAccounts(programId, {
   encoding: 'jsonParsed',
   filters: [
-    {
-      dataSize: 165,
-    },
     {
       memcmp: {
         offset: 0,
@@ -53,8 +57,11 @@ const results = await getProgramAccounts(programId, {
     {
       memcmp: {
         offset: 2,
-        bytes: b58.encode('example@email.com'),
+        bytes: b58.encode(Buffer.from('glorp420')),
       },
+    },
+    {
+      dataSize: 1 + 1 + 256,
     },
   ],
 });
@@ -63,11 +70,11 @@ const results = await getProgramAccounts(programId, {
 ### Querying in `solana-program`
 
 In contrast, `solana-program` provides a more intuitive interface. The same
-query would be written as follows:
+query would be written like this:
 
 ```typescript
 // example data structure we're storing in account
-class UserAccountData extends ProgramObject {
+class Comment extends ProgramObject {
   @field('u8')
   tag: number = 1;
 
@@ -75,15 +82,15 @@ class UserAccountData extends ProgramObject {
   age?: number;
 
   @field('String', { space: 256 })
-  username?: number;
+  username?: string;
 }
 
-// select all user accounts with username "glorp" note that the dataSize filter
-// is automatically added; however, it could be set explicitly via
+// select all accounts with username glorp. note that the dataSize filter is
+// automatically added; however, it can be set explicitly, via
 // program.select(Person).size(...)...
 const accounts = await program
   .select(Person)
-  .match({ tag: 1, username: 'glorp' })
+  .match({ tag: 1, username: 'glorp420' })
   .execute();
 ```
 
@@ -99,48 +106,36 @@ class LuckyNumber extends ProgramObject {
 }
 
 class LuckyNumberProgram extends Program {
+  public async main(user: Keypair) {
+    await Solana.initialize();
+
+    const seed = 'lucky-number'
+    const key = await this.deriveAddress(user.publicKey, seed);
+    const account = await this.getAccount(LuckyNumber, luckNumberKey);
+    const luckyNumber = Math.round(100 * Math.random());
+    const tx = Solana.begin();
+
+    if (account === null) {
+      const space = 1;
+      const instr = this.createAccountWithSeed(user, seed, key, space)
+      console.log('creating "lucky number" account');
+      tx.add(instr);
+    }
+    console.log('setting new "lucky number"');
+    tx.add(this.setLuckyNumber(user, key, luckyNumber));
+
+    const signature = await tx.sign(user).execute();
+    console.log('transaction signature:', signature);
+  }
+
   public setLuckyNumber(
-    luckyNumberAddress: Address,
-    value: number,
+    user: Address, key: Address, value: number,
   ): CustomInstructionBuilder {
     return this
       .instruction(new LuckyNumber({ value })
-      .account(luckyNumberAddress, { isWritable: true, });
+      .account(user, { isWritable: true, });
+      .account(key, { isWritable: true, });
   }
 }
 
-async function main(user: Keypair, program: LuckyNumberProgram) {
-  await Solana.initialize();
-
-  // compute public key address of program's "lucky number" account
-  const luckyNumberKey = await program.deriveAddress(
-    user.publicKey, 'lucky-number'
-  );
-  // randomly select new lucky number between 0 .. 100
-  const luckyNumber = Math.round(100 * Math.random());
-
-  // get existing account, if exists
-  const account = await program.getAccount(LuckyNumber, luckNumberKey);
-
-  // start building a new transaction
-  const tx = Solana.begin();
-
-  // create lucky number account if does not exist
-  if (account === null) {
-    const space = 1;
-    console.log('creating "lucky number" account');
-    tx.add(
-      program.createAccountWithSeed(
-        user, 'lucky-number', luckyNumberKey, space
-      )
-    );
-  }
-  // upsert new lucky number
-  console.log('setting new "lucky number"');
-  tx.add(program.setLuckyNumber(luckyNumberKey, luckyNumber));
-
-  // sign & execute transaction
-  const signature = await tx.sign(user).execute();
-  console.log('transaction signature:', signature);
-}
 ```
