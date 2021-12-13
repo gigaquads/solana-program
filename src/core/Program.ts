@@ -71,8 +71,7 @@ export default class Program {
   public instruction(
     data: ProgramObject | null = null,
   ): CustomInstructionBuilder {
-    const builder = new CustomInstructionBuilder(this);
-    builder.data = data;
+    const builder = new CustomInstructionBuilder(this, data);
     return builder;
   }
 
