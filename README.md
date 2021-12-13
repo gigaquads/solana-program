@@ -133,7 +133,7 @@ class LuckyNumberProgram extends Program {
     user: Address, key: Address, value: number,
   ): CustomInstructionBuilder {
     return this.instruction()
-      .account(user, { isWritable: true, });
+      .account(user, { isWritable: true, isSigner: true });
       .account(key, { isWritable: true, });
       .data(new LuckyNumber({ value }))
   }
