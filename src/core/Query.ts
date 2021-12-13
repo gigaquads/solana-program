@@ -24,7 +24,6 @@ export default class Query<T extends ProgramObject> {
   constructor(program: Program, dtype: new (data: any) => T) {
     this.programId = program.id;
     this.dtype = dtype;
-    this.size(Reflect.getMetadata('space', dtype));
   }
 
   public memcmp(offset: number, bytes: MemcmpTarget): Query<T> {
@@ -97,6 +96,12 @@ export default class Query<T extends ProgramObject> {
     // set account commitment level
     if (this.commitmentLevel !== null) {
       config.commitment = this.commitmentLevel;
+    }
+    // if we don't already have the max num of filters set (namely, 4) and we
+    // haven't yet set a dataSize filter, we automatically add it here.
+    if (config.filters.length < 4 && this.dataSizeFilter === null) {
+      const dataSize = Reflect.getMetadata('space', this.dtype);
+      this.size(dataSize);
     }
     // fetch list of objects with form: {[pubkey: Pubkey], [account:
     // AccountInfo]}. then process each result into a corresponding
