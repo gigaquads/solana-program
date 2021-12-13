@@ -88,9 +88,9 @@ class Comment extends ProgramObject {
 
 // select all accounts with username glorp. note that the dataSize filter is
 // automatically added; however, it can be set explicitly, via
-// program.select(Person).size(...)...
+// program.select(Comment).size(...)...
 const accounts = await program
-  .select(Person)
+  .select(Comment)
   .match({ tag: 1, username: 'glorp420' })
   .execute();
 ```
