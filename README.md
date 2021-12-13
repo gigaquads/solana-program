@@ -1,12 +1,13 @@
 # Solana Program
 
-This library builds upon @solana/web3.js with slightly higher-level yet shallow
-abstractions and interacting with Solana programs that is more natural to read
-than raw web3.js code.
+`solana-program` builds upon @solana/web3.js with the intent of reducing the
+amount of boilerplate code and lower-level data wrangling necessary when
+developing client-side Solana apps. Our goal is to provide a more intuitive,
+object-oriented API.
 
 ## Installing
 
-x`yarn add solana-program` or `npm install solana-program`.
+`yarn add solana-program` or `npm install solana-program`.
 
 ## Building & Executing Instructions
 
