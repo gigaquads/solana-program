@@ -26,10 +26,15 @@ export enum TransactionState {
  */
 export default class TransactionBuilder {
   public transaction: Transaction = new Transaction();
+  private sig: string | null = null;
   private state: TransactionState = TransactionState.Created;
   private signers: Set<Keypair> = new Set<Keypair>();
   private instructionBuilders: Array<InstructionBuilder> = [];
   private payer: Keypair | null = null;
+
+  get signature(): string | null {
+    return this.sig;
+  }
 
   /**
    * Have we already executed the managed transaction.
@@ -132,6 +137,7 @@ export default class TransactionBuilder {
     try {
       const sig = await sendAndConfirmTransaction(Solana.conn, tx, signers);
       this.state = TransactionState.Executed;
+      this.sig = sig;
       return sig;
     } catch (err) {
       console.error(`transaction execution failed: ${err}`);

@@ -36,7 +36,11 @@ export default class InstructionData extends ProgramObject {
   public toBuffer(): Buffer {
     const cls: any = this.constructor;
     const schema = new Map([[cls, this.schema]]);
-    const bytes = borsh.serialize(schema, this);
-    return Buffer.from(Uint8Array.of(this.tag, ...bytes));
+    if (!(this.schema && this.schema.fields.length)) {
+      return Buffer.from([this.tag]);
+    } else {
+      const bytes = borsh.serialize(schema, this);
+      return Buffer.from(Uint8Array.of(this.tag, ...bytes));
+    }
   }
 }

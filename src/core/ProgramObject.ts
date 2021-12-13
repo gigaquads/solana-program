@@ -49,20 +49,26 @@ export default class ProgramObject {
   public toBuffer(): Buffer {
     const cls: any = this.constructor;
     const schema = new Map([[cls, this.schema]]);
-    // serialize this ProgramObject to byte buffer via Borsh.
     let bytes;
+
+    // serialize this ProgramObject to byte buffer via Borsh.
     const adaptors = Reflect.getMetadata('adaptors', this.constructor);
     if (adaptors && Object.keys(adaptors).length > 0) {
       // apply any field value adaptors. an adaptor is a function that takes the
       // native JS property value and returns the data in a form Borsh can
       // understand, like converting a PublicKey object into a Uint8Array.
-      const data: { [k: string]: any } = {};
+      const adapted = new cls({});
       this.schema.fields.forEach((fieldArr: [string, any]) => {
         const k = fieldArr[0];
-        const adapt = adaptors[k].onSerialize;
-        data[k] = adapt ? adapt(this[k]) : this[k];
+        const adaptor = adaptors[k];
+        if (adaptor) {
+          const adapt = adaptor.onSerialize;
+          adapted[k] = adapt ? adapt(this[k]) : this[k];
+        } else {
+          adapted[k] = this[k];
+        }
       });
-      bytes = borsh.serialize(schema, data);
+      bytes = borsh.serialize(schema, adapted);
     } else {
       bytes = borsh.serialize(schema, this);
     }

@@ -1,27 +1,20 @@
 import 'reflect-metadata';
-import InstructionData from '../core/InstructionData';
-import { tag, field } from '../core/util';
+import { Keypair } from '@solana/web3.js';
+import { field } from '../core/util';
+import { CustomInstructionBuilder } from '../core/builders';
+import { Address } from '../core/types';
 import Solana from '../core/Solana';
 import Program from '../core/Program';
-import { AccountInterface } from '../core/Account';
-import { CustomInstructionBuilder } from '../core/builders';
-import { Keypair, PublicKey } from '@solana/web3.js';
-import { loadKeypair } from '../cli';
+import ProgramObject from '../core/ProgramObject';
+import { run } from './util';
+
+const TAG_INITIALIZE_LUCKY_NUMBER = 0;
+const TAG_UPDATE_LUCKY_NUMBER = 1;
 
 /**
- * Data structure for "create lucky number" instruction.
+ * Data structure for "create" and "update" lucky number instructions.
  */
-@tag(0)
-class CreateLuckyNumber extends InstructionData {
-  @field('u8')
-  value?: number;
-}
-
-/**
- * Data structure for "update lucky number" instruction.
- */
-@tag(1)
-class UpdateLuckyNumber extends InstructionData {
+class LuckyNumber extends ProgramObject {
   @field('u8')
   value?: number;
 }
@@ -31,92 +24,73 @@ class UpdateLuckyNumber extends InstructionData {
  */
 class LuckyNumberProgram extends Program {
   /**
-   * Create an instruction that updates the program's lucky number.
-   * @param {AccountInterface | PublicKey} account - Account or public key of account.
-   * @param {CreateLuckyNumber} data - instruction data
-   * @return {CustomInstructionBuilder} - and Instruction builder instance.
+   * Main function.
    */
-  public initializeLuckyNumber(
-    account: AccountInterface | PublicKey,
-    data: CreateLuckyNumber,
-  ): CustomInstructionBuilder {
-    return this.newInstruction(data).withAccount(account, { isWritable: true });
+  async main(payer: Keypair) {
+    // we're going to create an account to store the user's lucky number in, so we
+    // need to derive an address for the account. we elect here to use the
+    // transaction payer's public key.
+    const key = await this.deriveAddress(payer, 'lucky_number');
+
+    // new lucky number between 0 .. 100
+    const value = Math.round(100 * Math.random());
+
+    // init, build and execute transaction
+    const tx = Solana.begin();
+
+    if (await this.hasAccount(key)) {
+      console.log('updating lucky number...');
+      // if account exists, just update existing value,
+      // no need to create new account
+      tx.add(this.updateLuckyNumber(key, new LuckyNumber({ value })));
+    } else {
+      console.log('creating account and initializing lucky number...');
+      // create a lucky_number account for the payer
+      // and initialize a value.
+      const payload = new LuckyNumber({ value });
+      tx.add(
+        this.createAccountWithSeed(payer, 'lucky_number', key, payload),
+        // program.initializeLuckyNumber(key, payload),
+      );
+    }
+    // execute transaction
+    const signature = await tx.sign(payer).execute();
+    console.log('transaction signature:', signature);
   }
 
   /**
    * Create an instruction that updates the program's lucky number.
-   * @param {AccountInterface | PublicKey} account - Account or public key of account.
-   * @param {UpdateLuckyNumber} data - instruction data
+   * @param {Address} account - Account or public key of account.
+   * @param {LuckyNumber} luckyNumber - instruction data
+   * @return {CustomInstructionBuilder} - and Instruction builder instance.
+   */
+  public initializeLuckyNumber(
+    luckyNumberAddress: Address,
+    luckyNumber: LuckyNumber,
+  ): CustomInstructionBuilder {
+    return this.instruction(luckyNumber)
+      .tag(TAG_INITIALIZE_LUCKY_NUMBER)
+      .account(luckyNumberAddress, { isWritable: true });
+  }
+
+  /**
+   * Create an instruction that updates the program's lucky number.
+   * @param {Address} account - Account or public key of account.
+   * @param {LuckyNumber} luckyNumber - instruction data
    * @return {CustomInstructionBuilder} - and Instruction builder instance.
    */
   public updateLuckyNumber(
-    account: AccountInterface | PublicKey,
-    data: UpdateLuckyNumber,
+    luckyNumberAddress: Address,
+    luckyNumber: LuckyNumber,
   ): CustomInstructionBuilder {
-    return this.newInstruction(data).withAccount(account, { isWritable: true });
+    return this.instruction(luckyNumber)
+      .tag(TAG_UPDATE_LUCKY_NUMBER)
+      .account(luckyNumberAddress, { isWritable: true });
   }
-}
-
-/**
- * Main function.
- */
-async function main(payer: Keypair, program: LuckyNumberProgram) {
-  // we're going to create an account to store the user's lucky number in, so we
-  // need to derive an address for the account. we elect here to use the
-  // transaction payer's public key.
-  const key = await program.deriveAddress(payer, 'lucky_number');
-
-  // new lucky number between 0 .. 100
-  const value = Math.round(100 * Math.random());
-
-  // init, build and execute transaction
-  const tx = Solana.begin();
-
-  if (await program.hasAccount(key)) {
-    console.log('updating lucky number...');
-    // if account exists, just update existing value,
-    // no need to create new account
-    tx.add(program.updateLuckyNumber(key, new UpdateLuckyNumber({ value })));
-  } else {
-    console.log('creating account and initializing lucky number...');
-    // create a lucky_number account for the payer
-    // and initialize a value.
-    const payload = new CreateLuckyNumber({ value });
-    tx.add(
-      program.createAccountWithSeed(payer, 'lucky_number', key, payload),
-      // program.initializeLuckyNumber(key, payload),
-    );
-  }
-  // execute transaction
-  const signature = await tx.sign(payer).execute();
-  console.log('transaction signature:', signature);
-}
-
-/**
- * Entrypoint for `yarn run start`.
- */
-async function start(): Promise<void> {
-  // load keypair of target on-chain program
-  const programKeypairPath = process.env.PROGRAM_KEYPAIR_PATH;
-  if (!programKeypairPath) {
-    throw Error('PROGRAM_KEYPAIR_PATH environment var required');
-  }
-  // load keypair of the fee payer
-  const payerKeypairPath = process.env.PAYER_KEYPAIR_PATH;
-  if (!payerKeypairPath) {
-    throw Error('PAYER_KEYPAIR_PATH environment var required');
-  }
-  // load keypairs, intantiate program, init and run.
-  const payer = await loadKeypair(payerKeypairPath);
-  const programKeypair = await loadKeypair(programKeypairPath);
-  const program = new LuckyNumberProgram(programKeypair.publicKey);
-
-  await Solana.initialize();
-  await main(payer, program);
 }
 
 // node process entrypoint:
-start().then(
+run(LuckyNumberProgram).then(
   () => process.exit(),
   (err) => {
     console.error(err);

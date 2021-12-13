@@ -7,9 +7,10 @@ import {
   TransactionInstruction,
 } from '@solana/web3.js';
 import Solana from '../Solana';
-import { AccountInterface } from '../Account';
 import Program from '../Program';
-import InstructionData from '../InstructionData';
+import { Address } from '../types';
+import { resolvePublicKey } from '../util';
+import ProgramObject from '../ProgramObject';
 
 export type AccountMetadataOptions = {
   /** true if instruction requires transaction signature matching `pubkey` */
@@ -171,13 +172,14 @@ export class SystemInstructionBuilder extends InstructionBuilder {
 export class CustomInstructionBuilder extends InstructionBuilder {
   public readonly program: Program;
   public accounts: Array<AccountMetadata> = [];
-  public data: InstructionData | null = null;
+  public data: ProgramObject | null = null;
+  private instructionTag: number = 0;
 
   /**
    * @param {Program} program - Program that owns the instruction.
-   * @param {InstructionData | null} data - Instruction data payload.
+   * @param {ProgramObject | null} data - Instruction data payload.
    */
-  constructor(program: Program, data: InstructionData | null = null) {
+  constructor(program: Program, data: ProgramObject | null = null) {
     super();
     this.program = program;
     this.data = data;
@@ -190,22 +192,12 @@ export class CustomInstructionBuilder extends InstructionBuilder {
    * @param {any} options - Account metadata fields.
    * @return {InstructionBuilder} - returns this instruction.
    */
-  public withAccount(
-    account: Keypair | PublicKey | AccountInterface,
+  public account(
+    account: Address,
     options: AccountMetadataOptions = { isSigner: false, isWritable: false },
   ): CustomInstructionBuilder {
     // just add the account metadata to array
-    let key;
-    if (account instanceof Keypair) {
-      key = account.publicKey;
-    } else if (account instanceof PublicKey) {
-      key = account;
-    } else {
-      if (account.key === null) {
-        throw Error('cannot add account with no public key to instruction');
-      }
-      key = account.key;
-    }
+    const key = resolvePublicKey(account);
     this.accounts.push(
       new AccountMetadata(
         key,
@@ -216,6 +208,14 @@ export class CustomInstructionBuilder extends InstructionBuilder {
     return this;
   }
 
+  public tag(tag: number): CustomInstructionBuilder {
+    if (tag < 0 || tag > 255) {
+      throw Error(`instruction tag must be in range [0, 255]. got ${tag}`);
+    }
+    this.instructionTag = tag;
+    return this;
+  }
+
   /**
    * Generate a web3 TransactionInstruction using this solana-program
    * Instruction. Multiple built instructions can be executed in a single
@@ -223,8 +223,16 @@ export class CustomInstructionBuilder extends InstructionBuilder {
    * @return {TransactionInstruction} - The generated TransactionInstruction.
    */
   public async build(): Promise<TransactionInstruction> {
-    // serialize InstructionData to buffer as instruction data
-    const data = this.data ? this.data!.toBuffer() : Buffer.alloc(0);
+    if (this.instructionTag === null || this.instructionTag === undefined) {
+      throw Error('cannot send instruction without a tag');
+    }
+    // serialize ProgramObject to buffer as instruction data
+    const data = this.data
+      ? Buffer.concat([
+          Buffer.from([this.instructionTag]),
+          this.data!.toBuffer(),
+        ])
+      : Buffer.from([this.instructionTag]);
     // build up account metadata needed by solana SDK
     const keys = this.accounts.map((meta: AccountMetadata) => {
       return {

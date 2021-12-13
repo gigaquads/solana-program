@@ -1,7 +1,9 @@
 import 'reflect-metadata';
 
+export { default as PDA } from './core/PDA';
+export { default as Action } from './core/Action';
+export { Address, Seed } from './core/types';
 export { default as Solana } from './core/Solana';
-export { default as InstructionData } from './core/InstructionData';
 export { default as ProgramObject } from './core/ProgramObject';
 export { default as Program } from './core/Program';
 export { AccountInterface, default as Account } from './core/Account';
@@ -13,6 +15,5 @@ export {
   CustomInstructionBuilder,
   SystemInstructionBuilder,
 } from './core/builders';
-
-export { FieldAdaptor, tag, field } from './core/util';
+export { FieldAdaptor, field, resolvePublicKey } from './core/util';
 export { loadKeypair } from './cli';

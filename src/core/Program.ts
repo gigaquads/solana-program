@@ -1,18 +1,20 @@
-import { Keypair, PublicKey } from '@solana/web3.js';
-import { ProgramObject } from '..';
-
-import Account, { AccountInterface } from './Account';
+import 'reflect-metadata';
+import { AccountInfo, Keypair, PublicKey } from '@solana/web3.js';
 import { CustomInstructionBuilder, SystemInstructionBuilder } from './builders';
 import { SYSTEM_PROGRAM_PUBKEY } from './constants';
-import InstructionData from './InstructionData';
+import ProgramObject from './ProgramObject';
+import Account from './Account';
 import Solana from './Solana';
+import PDA from './PDA';
+import Query from './Query';
+import { resolvePublicKey } from './util';
+import { Address, Seed } from './types';
 
 /**
  * Client for a Solana blockchain program.
  */
 export default class Program {
-  public static SYSTEM_PROGRAM_PUBKEY = SYSTEM_PROGRAM_PUBKEY;
-
+  public static systemProgramPublicKey = SYSTEM_PROGRAM_PUBKEY;
   private programId: PublicKey | null = null;
 
   /**
@@ -33,6 +35,11 @@ export default class Program {
     }
   }
 
+  // eslint-disable-next-line no-unused-vars
+  public async main(user: Keypair) {
+    // TODO: override in subclass
+  }
+
   /**
    * Return true if this program is deployed to Solana (using its program ID).
    * @return {boolean} - True, if on-chain program is deployed.
@@ -43,14 +50,26 @@ export default class Program {
   }
 
   /**
+   * Return a Query object, used to fetch program owned accounts.
+   * @param {new(any) => ProgramObject} dtype - ProgramObject subclass
+   * @return {Query<T>} - Un-executed query object.
+   */
+  public select<T extends ProgramObject>(
+    // eslint-disable-next-line no-unused-vars
+    dtype: { new (data: any): T },
+  ): Query<T> {
+    return new Query(this, dtype);
+  }
+
+  /**
    * Initialize a new Instruction. To execute the instruction on-chain (in a
    * transaction), use instr.execute().
    *
-   * @param {InstructionData?} data - Optional data to bind to instruction.
+   * @param {ProgramObject?} data - Optional data to bind to instruction.
    * @return {InstructionBuilder} - An initialized Instruction.
    */
-  public newInstruction(
-    data: InstructionData | null = null,
+  public instruction(
+    data: ProgramObject | null = null,
   ): CustomInstructionBuilder {
     const builder = new CustomInstructionBuilder(this);
     builder.data = data;
@@ -87,33 +106,49 @@ export default class Program {
    * to derive new address.
    * @return {Promise<[PublicKey, number]>} - Derived address & nonce.
    */
-  public async findAddress(
-    seeds: string | Buffer | Uint8Array | Array<string | Buffer | Uint8Array>,
-  ): Promise<[PublicKey, number]> {
+  public async findAddress(seeds: Seed | Array<Seed>): Promise<PDA> {
     // convert seeds arg to list of buffers
     seeds = seeds instanceof Array ? seeds : [seeds];
-    const seedBuffers = seeds.map((x) =>
-      x instanceof Buffer ? x : Buffer.from(x),
-    );
+    const seedBuffers = seeds.map((x) => {
+      if (x instanceof PublicKey) {
+        return x.toBytes();
+      } else {
+        return x instanceof Buffer ? x : Buffer.from(x);
+      }
+    });
     // generate PDA (public key, nonce)
-    return await PublicKey.findProgramAddress(seedBuffers, this.id);
+    const [key, nonce] = await PublicKey.findProgramAddress(
+      seedBuffers,
+      this.id,
+    );
+    return new PDA(key, nonce, seeds);
+  }
+
+  public async findAddresses(seeds: {
+    [key: string]: Seed | Array<Seed>;
+  }): Promise<{ [key: string]: PDA }> {
+    let addresses: { [key: string]: PDA } = {};
+    for (let [k, v] of Object.entries(seeds)) {
+      addresses[k] = await this.findAddress(v);
+    }
+    return addresses;
   }
 
   /**
    * Return a new Account, containing AccountInfo in this.info.
-   * @param {string | PublicKey} key - Address of account info to fetch.
+   * @param {Address} key - Address of account info to fetch.
    * @return {Promise<Account>} - Fetched Account.
    */
   public async getAccount<T extends ProgramObject>(
     // eslint-disable-next-line no-unused-vars
-    programObjectType: { new (data: any): T },
-    key: PublicKey,
+    dtype: { new (data: any): T },
+    key: Address,
   ): Promise<Account<T> | null> {
+    key = resolvePublicKey(key);
     const info = await Solana.conn.getAccountInfo(key);
 
     if (info !== null) {
-      // const trimmedData = Buffer.from(data.toString().replace(/\0+$/, ''));
-      const data = new programObjectType(info.data);
+      const data = new dtype(info.data);
       return new Account<T>(key, info, data);
     }
     return null;
@@ -121,18 +156,29 @@ export default class Program {
 
   /**
    * Return true if an account exists and is owned by this program.
-   * @param {PublicKey} key - program-derived account address.
+   * @param {Address} key - program-derived account address.
    * @return {boolean} True, if account is found.
    */
-  public async hasAccount(key: PublicKey): Promise<boolean> {
-    return (await Solana.conn.getAccountInfo(key)) !== null;
+  public async hasAccount(key: Address): Promise<boolean> {
+    return (await this.getAccountInfo(key)) !== null;
+  }
+
+  /**
+   * Return an account info exists and is owned by this program.
+   * @param {Address} key - program-derived account address.
+   * @return {AccountInfo<Buffer>} The account info
+   */
+  public async getAccountInfo(
+    key: Address,
+  ): Promise<AccountInfo<Buffer> | null> {
+    return await Solana.conn.getAccountInfo(resolvePublicKey(key));
   }
 
   /**
    * Create a new program-owned account.
    * @param {Keypair} payer - keypair of transaction fee payer.
    * @param {string} seed - seed for program-derived address.
-   * @param {PublicKey} key - public key "address" of new account.
+   * @param {Address | Fucntion} key - public key "address" of new account.
    * @param {number} space - number of bytes to allocate.
    * @param {number | null} lamports - amount of funds to allocate.
    * @return {SystemInstructionBuilder} - an instruction builder.
@@ -140,13 +186,16 @@ export default class Program {
   public createAccountWithSeed(
     payer: Keypair,
     seed: string | Function,
-    key: PublicKey | Function,
-    space: number | InstructionData,
+    key: Address | Function,
+    space: number | ProgramObject,
     lamports: number | null | Function = null,
   ): SystemInstructionBuilder {
     const resolvedSpace: number =
-      space instanceof InstructionData ? space.measure() : space;
+      space instanceof ProgramObject ? 1 + space.measure() : space;
     const builder = new SystemInstructionBuilder();
+    if (typeof key !== 'function') {
+      key = resolvePublicKey(key);
+    }
     builder.createAccountWithSeed(
       this,
       payer,
@@ -161,39 +210,24 @@ export default class Program {
   /**
    * Create a new program-owned account,
    * @param {Keypair} payer - keypair of transaction fee payer.
-   * @param {PublicKey} key - public key "address" of new account.
+   * @param {Address | Function} key - public key "address" of new account.
    * @param {number} space - number of bytes to allocate.
    * @param {number | null} lamports - amount of funds to allocate.
    * @return {SystemInstructionBuilder} - an instruction builder.
    */
   public createAccount(
     payer: Keypair,
-    key: PublicKey | Function,
-    space: number | InstructionData,
+    key: Address | Function,
+    space: number | ProgramObject,
     lamports: number | null | Function = null,
   ): SystemInstructionBuilder {
     const resolvedSpace: number =
-      space instanceof InstructionData ? space.measure() : space;
+      space instanceof ProgramObject ? 1 + space.measure() : space;
+    if (typeof key !== 'function') {
+      key = resolvePublicKey(key);
+    }
     const builder = new SystemInstructionBuilder();
     builder.createAccount(this, payer, key, resolvedSpace, lamports);
     return builder;
-  }
-
-  /**
-   *
-   * @param {Keypair | PublicKey} user - Public key or keypair of payer.
-   * @param {PublicKey} pda - a PDA generated via findProgramAddress
-   * @param {Echo} data - instruction data.
-   */
-  public createAccountWithPda<T extends InstructionData>(
-    user: Keypair | PublicKey | AccountInterface,
-    pda: PublicKey,
-    data: T,
-  ): CustomInstructionBuilder {
-    user = user instanceof Keypair ? user.publicKey : user;
-    return this.newInstruction(data)
-      .withAccount(user, { isSigner: true, isWritable: true })
-      .withAccount(SYSTEM_PROGRAM_PUBKEY)
-      .withAccount(pda, { isWritable: true });
   }
 }
