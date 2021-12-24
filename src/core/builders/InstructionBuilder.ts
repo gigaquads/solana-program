@@ -241,16 +241,20 @@ export class CustomInstructionBuilder extends InstructionBuilder {
    * @return {TransactionInstruction} - The generated TransactionInstruction.
    */
   public async build(): Promise<TransactionInstruction> {
+    let data;
     if (this.instructionTag === null || this.instructionTag === undefined) {
-      throw Error('cannot send instruction without a tag');
+      // build instuction data with no tag (initial byte used to identify
+      // instruction on backend)
+      data = this.dataObject ? this.dataObject!.toBuffer() : Buffer.alloc(0);
+    } else {
+      // serialize ProgramObject to buffer as instruction data
+      data = this.dataObject
+        ? Buffer.concat([
+            Buffer.from([this.instructionTag]),
+            this.dataObject!.toBuffer(),
+          ])
+        : Buffer.from([this.instructionTag]);
     }
-    // serialize ProgramObject to buffer as instruction data
-    const data = this.dataObject
-      ? Buffer.concat([
-          Buffer.from([this.instructionTag]),
-          this.dataObject!.toBuffer(),
-        ])
-      : Buffer.from([this.instructionTag]);
     // build up account metadata needed by solana SDK
     const keys = this.accounts.map((meta: AccountMetadata) => {
       return {
