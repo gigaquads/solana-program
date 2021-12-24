@@ -34,7 +34,6 @@
     "merge-anything": "^4.0.2",
     "reflect": "^0.1.3",
     "reflect-metadata": "^0.1.13",
-    "solana-program": "file:/home/daniel/projects/rust/solana/solana-program",
     "yaml": "^1.10.2"
   },
   "devDependencies": {
