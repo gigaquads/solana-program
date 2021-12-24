@@ -60,12 +60,19 @@ export function field(
     }
     // set manually defined byte space of field value.
     if (!options.space) {
-      const inferredSize = inferFieldSize(type);
+      let inferredSize = inferFieldSize(type);
       if (inferredSize === null) {
-        throw Error(
-          `could not infer space of field: ` +
-            `${name.toString()} (type: ${type})`,
-        );
+        if (typeof type === 'string') {
+          // NOTE: if the field is a string, we guess the space required
+          // based on the length of the string. Rust stores strings as a usize
+          // (64bit int) and a byte vector, with 4 bytes per char.
+          inferredSize = 8 + 4 * type.length;
+        } else {
+          throw Error(
+            `could not infer space of field: ` +
+              `"${name.toString()}" (type: ${type})`,
+          );
+        }
       }
       options.space = inferredSize;
     }
