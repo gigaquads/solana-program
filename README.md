@@ -25,8 +25,8 @@ You can add one or more `InstructionBuilder` objects to a transaction, using
 `TransactionBuilder`, like so:
 
 ```typescript
-const trans = Solana.begin().add(instr).sign(user);
-const signature = trans.execute();
+const tx = Solana.begin().add(instr).sign(user);
+const signature = await tx.execute();
 ```
 
 ## Querying Program Accounts
