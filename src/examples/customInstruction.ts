@@ -7,12 +7,10 @@ import ProgramObject from '../core/ProgramObject';
 import { run } from './util';
 
 /**
- * u8 tags, written to the first byte of instruction data, used on the backend
+ * u8 opcode, written to the first byte of instruction data, used on the backend
  * to route the instruction to appropriate handler.
  */
-// eslint-disable-next-line no-unused-vars
-enum Tag {
-  // eslint-disable-next-line no-unused-vars
+enum OpCode {
   CreateUserProfile = 0,
 }
 
@@ -48,19 +46,19 @@ class ExampleProgram extends Program {
       age: 69,
     });
     // Create a custom instruction. Recall that an instruction has 3 main
-    // segments: Program ID, Account address array, and data. Below, the "tag"
+    // segments: Program ID, Account address array, and data. Below, the "opcode"
     // is serialized as the first byte of instruction data. The on-chain program
     // is responsible for routing the instruction based on this value. Each
     // account address is specified, using a PDA, Keypair and PublicKey. See the
     // `Address` type for all recognized argument types.
-    const createUserProfileInstruction = this.instruction(profile)
-      .tag(Tag.CreateUserProfile)
+    const ixCreateUserProfile = this.instruction(OpCode.CreateUserProfile)
       .account(user, { isSigner: true, isWritable: true })
       .account(pda, { isWritable: true })
-      .account(Program.systemProgramPublicKey);
+      .account(Program.systemProgramPublicKey)
+      .data(profile);
 
     // Add "create account instruction to transaction, sign and execute
-    await Solana.begin().add(createUserProfileInstruction).sign(user).execute();
+    await Solana.begin().add(ixCreateUserProfile).sign(user).execute();
   }
 }
 

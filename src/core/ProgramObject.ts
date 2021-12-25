@@ -27,8 +27,7 @@ export default class ProgramObject {
   }
 
   /**
-   * @return {any} - The borsh schema object built up via `tag` and `field`
-   * decorators.
+   * @return {any} - The borsh schema object built up via `field` decorator.
    */
   public get schema(): any {
     return Reflect.getMetadata('schema', this.constructor);

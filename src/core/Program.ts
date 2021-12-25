@@ -35,11 +35,6 @@ export default class Program {
     }
   }
 
-  // eslint-disable-next-line no-unused-vars
-  public async main(user: Keypair) {
-    // TODO: override in subclass
-  }
-
   /**
    * Return true if this program is deployed to Solana (using its program ID).
    * @return {boolean} - True, if on-chain program is deployed.
@@ -68,10 +63,11 @@ export default class Program {
    * @param {ProgramObject?} data - Optional data to bind to instruction.
    * @return {InstructionBuilder} - An initialized Instruction.
    */
-  public instruction(
-    data: ProgramObject | null = null,
-  ): CustomInstructionBuilder {
-    const builder = new CustomInstructionBuilder(this, data);
+  public instruction(opCode: number | null): CustomInstructionBuilder {
+    const builder = new CustomInstructionBuilder(this);
+    if (opCode !== null) {
+      builder.opcode(opCode);
+    }
     return builder;
   }
 

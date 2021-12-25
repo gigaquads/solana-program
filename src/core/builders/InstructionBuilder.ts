@@ -173,7 +173,7 @@ export class CustomInstructionBuilder extends InstructionBuilder {
   public readonly program: Program;
   public accounts: Array<AccountMetadata> = [];
   private dataObject: ProgramObject | null = null;
-  private instructionTag: number = 0;
+  private opCode: number = 0;
 
   /**
    * @param {Program} program - Program that owns the instruction.
@@ -219,18 +219,20 @@ export class CustomInstructionBuilder extends InstructionBuilder {
   }
 
   /**
-   * Set the instruction integer tag. Value must range in [0, 255]. This value
-   * is sent as the first byte of instruction data and is intended to be used to
-   * route the instruction to the appropriate backend handler.
-   * @param {number} tag - Integer identifier of the instruction, to be routed
+   * Set the instruction integer opcode. Value must range in [0, 255]. This
+   * value is sent as the first byte of instruction data and is intended to be
+   * used to route the instruction to the appropriate backend handler.
+   * @param {number} opCode - Integer identifier of the instruction, to be routed
    * in backend program.
    * @return {CustomInstructionBuilder} - This CustomInstructionbuilder.
    */
-  public tag(tag: number): CustomInstructionBuilder {
-    if (tag < 0 || tag > 255) {
-      throw Error(`instruction tag must be in range [0, 255]. got ${tag}`);
+  public opcode(opCode: number): CustomInstructionBuilder {
+    if (opCode < 0 || opCode > 255) {
+      throw Error(
+        `instruction opcode must be in range [0, 255]. got ${opCode}`,
+      );
     }
-    this.instructionTag = tag;
+    this.opCode = opCode;
     return this;
   }
 
@@ -242,18 +244,18 @@ export class CustomInstructionBuilder extends InstructionBuilder {
    */
   public async build(): Promise<TransactionInstruction> {
     let data;
-    if (this.instructionTag === null || this.instructionTag === undefined) {
-      // build instuction data with no tag (initial byte used to identify
+    if (this.opCode === null || this.opCode === undefined) {
+      // build instuction data with no opCode (initial byte used to identify
       // instruction on backend)
       data = this.dataObject ? this.dataObject!.toBuffer() : Buffer.alloc(0);
     } else {
       // serialize ProgramObject to buffer as instruction data
       data = this.dataObject
         ? Buffer.concat([
-            Buffer.from([this.instructionTag]),
+            Buffer.from([this.opCode]),
             this.dataObject!.toBuffer(),
           ])
-        : Buffer.from([this.instructionTag]);
+        : Buffer.from([this.opCode]);
     }
     // build up account metadata needed by solana SDK
     const keys = this.accounts.map((meta: AccountMetadata) => {

@@ -8,8 +8,10 @@ import Program from '../core/Program';
 import ProgramObject from '../core/ProgramObject';
 import { run } from './util';
 
-const TAG_INITIALIZE_LUCKY_NUMBER = 0;
-const TAG_UPDATE_LUCKY_NUMBER = 1;
+enum OpCode {
+  InitializeLuckyNumber = 0,
+  UpdateLuckyNumber = 1,
+}
 
 /**
  * Data structure for "create" and "update" lucky number instructions.
@@ -68,9 +70,9 @@ class LuckyNumberProgram extends Program {
     luckyNumberAddress: Address,
     luckyNumber: LuckyNumber,
   ): CustomInstructionBuilder {
-    return this.instruction(luckyNumber)
-      .tag(TAG_INITIALIZE_LUCKY_NUMBER)
-      .account(luckyNumberAddress, { isWritable: true });
+    return this.instruction(OpCode.InitializeLuckyNumber)
+      .account(luckyNumberAddress, { isWritable: true })
+      .data(luckyNumber);
   }
 
   /**
@@ -83,9 +85,9 @@ class LuckyNumberProgram extends Program {
     luckyNumberAddress: Address,
     luckyNumber: LuckyNumber,
   ): CustomInstructionBuilder {
-    return this.instruction(luckyNumber)
-      .tag(TAG_UPDATE_LUCKY_NUMBER)
-      .account(luckyNumberAddress, { isWritable: true });
+    return this.instruction(OpCode.UpdateLuckyNumber)
+      .account(luckyNumberAddress, { isWritable: true })
+      .data(luckyNumber);
   }
 }
 
