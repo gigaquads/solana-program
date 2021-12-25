@@ -179,10 +179,9 @@ export class CustomInstructionBuilder extends InstructionBuilder {
    * @param {Program} program - Program that owns the instruction.
    * @param {ProgramObject | null} data - Instruction data payload.
    */
-  constructor(program: Program, data: ProgramObject | null = null) {
+  constructor(program: Program) {
     super();
     this.program = program;
-    this.dataObject = data;
   }
 
   /**

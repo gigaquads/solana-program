@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { Keypair } from '@solana/web3.js';
 import { field } from '../core/util';
 import Program from '../core/Program';
 import ProgramObject from '../core/ProgramObject';
@@ -27,10 +26,8 @@ class UserProfile extends ProgramObject {
 class ExampleProgram extends Program {
   /**
    * Main function.
-   * @param {Keypair} user - The (paying) user's keypair.
    */
-  // eslint-disable-next-line no-unused-vars
-  async main(user: Keypair) {
+  async main() {
     const query = this.select(UserProfile).match({
       tag: UserProfile.TAG,
       email: 'example@example.com',
