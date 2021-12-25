@@ -2,7 +2,8 @@ import 'reflect-metadata';
 import { field } from '../core/util';
 import Program from '../core/Program';
 import ProgramObject from '../core/ProgramObject';
-import { run } from './util';
+import { ExampleProgramInterface, run } from './util';
+import { Keypair } from '@solana/web3.js';
 
 /**
  * Instruction data for use in creating a new UserProfile account.
@@ -23,11 +24,12 @@ class UserProfile extends ProgramObject {
 /**
  * Example of querying via the Program's select method.
  */
-class ExampleProgram extends Program {
+class ExampleProgram extends Program implements ExampleProgramInterface {
   /**
    * Main function.
    */
-  async main() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async main(user: Keypair) {
     const query = this.select(UserProfile).match({
       tag: UserProfile.TAG,
       email: 'example@example.com',

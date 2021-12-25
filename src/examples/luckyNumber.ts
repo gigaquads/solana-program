@@ -6,7 +6,7 @@ import { Address } from '../core/types';
 import Solana from '../core/Solana';
 import Program from '../core/Program';
 import ProgramObject from '../core/ProgramObject';
-import { run } from './util';
+import { ExampleProgramInterface, run } from './util';
 
 enum OpCode {
   InitializeLuckyNumber = 0,
@@ -24,7 +24,7 @@ class LuckyNumber extends ProgramObject {
 /**
  * Lucky number Solana program client.
  */
-class LuckyNumberProgram extends Program {
+class LuckyNumberProgram extends Program implements ExampleProgramInterface {
   /**
    * Main function.
    */

@@ -4,7 +4,7 @@ import { field } from '../core/util';
 import Solana from '../core/Solana';
 import Program from '../core/Program';
 import ProgramObject from '../core/ProgramObject';
-import { run } from './util';
+import { ExampleProgramInterface, run } from './util';
 
 /**
  * u8 opcode, written to the first byte of instruction data, used on the backend
@@ -32,7 +32,7 @@ class NewUserProfile extends ProgramObject {
  * Example program, demoing the API for building a custom "create user profile
  * account" instruction.
  */
-class ExampleProgram extends Program {
+class ExampleProgram extends Program implements ExampleProgramInterface {
   /**
    * Main function.
    * @param {Keypair} user - The (paying) user's keypair.

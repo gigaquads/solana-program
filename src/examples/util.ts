@@ -1,12 +1,20 @@
-import { PublicKey } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 import { loadKeypair } from '../cli';
 import Program from '../core/Program';
 import Solana from '../core/Solana';
 
+export interface ExampleProgramInterface extends Program {
+  /**
+   * Main function.
+   * @param {Keypair} user - The (paying) user's keypair.
+   */
+  main(user: Keypair): Promise<void>;
+}
+
 /**
  * Entrypoint for `yarn run start`.
  */
-export async function run<T extends Program>(
+export async function run<T extends ExampleProgramInterface>(
   // eslint-disable-next-line no-unused-vars
   programClass: new (programId: PublicKey) => T,
 ): Promise<void> {

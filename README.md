@@ -33,20 +33,22 @@ const signature = await tx.execute();
 
 ### Querying in `@solana/web3.js`
 
-In order to retrieve a program's accounts using `@solana/web3.js`, you
-normally have to use some form of `getProgramAccounts`. Queries can be filtered
-according to two main criteria:
+In order to retrieve a program's accounts using `@solana/web3.js`, you normally
+have to use some form of the `getProgramAccounts` function. Queries can be
+filtered according to two main criteria:
 
-1. Total size of the target account's data.
-2. Contents of specific slices of data.
+1. The size (in bytes) of the target account's data.
+2. Contents of specific slices of base58-encoded data.
 
-It looks something like this:
+#### Example:
+
+Suppose we have an account that stores an initial "tag" byte, which indicates
+what "type" of account something is, as well as a "username" string and an "age"
+int. Using only web3.js to select accounts that match this pattern looks
+somehing like this:
 
 ```typescript
-// assuming we have a type of account storing user "comments," here we are
-// matching accounts against a "tag" int, signifying account "type", and a
-// username string.
-const results = await getProgramAccounts(programId, {
+const results = await getParsedProgramAccounts(programId, {
   encoding: 'jsonParsed',
   filters: [
     {
@@ -58,7 +60,7 @@ const results = await getProgramAccounts(programId, {
     {
       memcmp: {
         offset: 2,
-        bytes: b58.encode(Buffer.from('glorp420')),
+        bytes: b58.encode(Buffer.from('coolperson123')),
       },
     },
     {
@@ -91,7 +93,7 @@ class Comment extends ProgramObject {
 // program.select(Comment).size(...)...
 const accounts = await program
   .select(Comment)
-  .match({ tag: 1, username: 'glorp420' })
+  .match({ tag: 1, username: 'coolperson123' })
   .execute();
 ```
 
@@ -132,7 +134,7 @@ class LuckyNumberProgram extends Program {
   public setLuckyNumber(
     user: Address, key: Address, value: number,
   ): CustomInstructionBuilder {
-    return this.instruction()
+    return this.instruction(0)  // 0 is the OP code of the instruction
       .account(user, { isWritable: true, isSigner: true });
       .account(key, { isWritable: true, });
       .data(new LuckyNumber({ value }))
